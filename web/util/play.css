@@ -1,0 +1,49 @@
+
+body {
+  background-color: #F8F8F8;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.2em;
+}
+
+h1, p {
+  color: #333;
+}
+
+img {
+  display: block; 
+  }
+
+div#board {
+  overflow:auto;
+  width:1200px;
+  height:800px  
+}
+
+div#console {
+  overflow:auto;
+}
+
+div#mouseover {
+  width:1200px;
+  height:18px;
+  background-color: #F8afaf;
+}
+
+div#messages {
+  width:1200px;
+  height:18px;
+  background-color: #afafF8;
+}
+
+table.runboard {
+  background-color: white;
+  border-collapse: collapse;
+}
+
+table.runboard * {
+  padding: 0px;
+  margin: 0px;
+  border: none;
+}

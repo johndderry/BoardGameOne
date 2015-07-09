@@ -1,0 +1,4 @@
+name: BoardGameOne
+description: Generalized board game version 1
+dependencies:
+  browser: any

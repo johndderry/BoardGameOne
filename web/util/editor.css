@@ -1,0 +1,68 @@
+
+body {
+  background-color: #F8F8F8;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.2em;
+}
+
+h1, p {
+  color: #333;
+}
+
+*.peditor * {
+  background-color: white;  
+}
+
+img {
+  display: block; 
+  }
+
+div#board {
+  overflow:auto;
+  width:1200px;
+  height:700px
+}
+
+div#mouseover {
+  width:1200px;
+  height:18px;
+  background-color: #F8afaf;
+}
+
+div#messages {
+  width:1200px;
+  height:18px;
+  background-color: #afafF8;
+}
+
+div#toolbox {
+}
+
+div#runarea {
+  width:1200px;
+  background-color: #afF8af;
+}
+
+table.runboard {
+  background-color: white;
+  border-collapse: collapse;
+}
+
+table.runboard * {
+  padding: 0px;
+  margin: 0px;
+  border: none;
+}
+
+table.editboard {
+  background-color: grey;
+  border-collapse: collapse;
+}
+
+table.editboard * {
+  padding: 1px;
+  margin: 0px;
+  border: none;
+}
