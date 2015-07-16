@@ -1,0 +1,9 @@
+
+This has shell scripts for the dart console programs. 
+Still, execute them from the parent directory because 
+all file paths start from there.
+
+webserver.sh            serves both GET and PUT out of root 
+imageindexer.sh         regenerates image indexing files
+parsegen.sh             generates the parser definition file from sources in ../parser
+extractdoc.sh           extracts source document strings and creates ../BoardGameOne.html

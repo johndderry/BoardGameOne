@@ -1,0 +1,35 @@
+
+body {
+  background-color: #F8F8F8;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.2em;
+}
+
+h1, p {
+  color: #333;
+}
+
+img {
+  display: block; 
+  }
+
+
+div#queryDiv {
+  background-color: #60F8F8;
+  
+}
+
+div#addDiv {
+  background-color: #60F860;
+  
+}
+
+div.query {
+  overflow:auto;
+}
+
+div.additions {
+  overflow:auto;
+}

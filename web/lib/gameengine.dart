@@ -1,15 +1,17 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
-library gameengine;
+library boardgameone;
 
-import 'divpager.dart';
-import 'gameboard.dart';
-import 'bufferedhtmlio.dart';
-import 'interpreter.dart';
 import 'dart:html';
 import 'dart:async';
+import 'dart:convert';
+import 'bufferedhtmlio.dart';
+import 'interpreter.dart';
+import '../parser/parser.dart';
+
+part 'divpager.dart';
+part 'gameboard.dart';
+part 'designtools.dart';
+part 'designhelp.dart';
+part 'behavior.dart';
 
 /**********************
  * class GAMEENGINE   *
@@ -33,6 +35,9 @@ class GameEngine {
   BoardSquare     _actionSquare;  // square receiveing action
   Timer           _sliceTimer;    // player slice timer
 
+  WebConsole        queryConsole; // query console is created in divpager
+  englishParserDef  english;      // same here; but we need them to activate players
+
   TextAreaElement         maparea;      // text area for local load/save of maps
   MandyInterpreter        interpreter;
   Possessions             possessions;
@@ -42,8 +47,48 @@ class GameEngine {
     board.properties = GameBoard.genproperties(this, DEFAULT_GAME_CMAP, false);
     _chainStack = new List<GameBoard>();
     uselocal = singlestep = paused = running = false;
- }
-
+  }
+  //
+  // get some info about players using serialized names
+  //
+  KnowBase playerKnow(String name) {
+    GPlayer player;
+    for( player in _activePlayers ) 
+       if( player.serialname == name ) return player.knowledge;
+    return null;
+    }
+  
+  String Players(int vicinity) {
+    /*
+     * Return a list of active players using serialized names
+     * 
+     * vicinity >=0 is distance, == -1 means all players
+     * however only distance=0 is implemented
+     */
+    GPlayer player; StringBuffer buf;
+    if( _activePlayers == null ) return '';
+    buf = new StringBuffer();
+    if( vicinity < 0 ) {
+      for( player in _activePlayers ) 
+         buf.write('<option>${player.name}</option>');
+      return buf.toString();
+      }
+    BoardSquare bs = povPlayer.location;
+    if( bs.above != null && bs.above.resident != null )
+      buf.write('<option>${bs.above.resident.serialname}</option>');
+    if( bs.below != null && bs.below.resident != null )
+      buf.write('<option>${bs.below.resident.serialname}</option>');
+    if( bs.left != null && bs.left.resident != null )
+      buf.write('<option>${bs.left.resident.serialname}</option>');
+    if( bs.right != null && bs.right.resident != null )
+      buf.write('<option>${bs.right.resident.serialname}</option>');
+    
+    return buf.toString();
+  
+  }
+  //
+  // control whether maps are saved locally or not
+  //
   void useLocal(Element mapdiv) {
     // use a local text area to load and save maps - for working remotely to www server
     if( uselocal ) return;
@@ -145,6 +190,7 @@ class GameEngine {
   }
   
   void _placeboardresident(BoardSquare sqr) {
+    // do all basic initialization for the player here
     // see if the player indicates 'point' direction
     ObjectEntry pe; String point;
     if( (pe=sqr.resident.properties['point']) != null) {
@@ -166,9 +212,40 @@ class GameEngine {
       else 
         sqr.resident.image = new ImageElement(src:'http://${HOSTNAME}/images/${sqr.resident.imagename}-${point}.png');
     }
+    sqr.resident.image.height = sqr.resident.image.width = board.imageSize;
     // copy the player instance to _active players 
     _activePlayers.add(sqr.resident);
-    // call square.enter to make them show up
+    // look for an initialization action
+    ObjectEntry obj;
+    if( (obj = sqr.resident.properties['initaction']) != null) {
+      _slicePlayer = sqr.resident;
+      interpreter.objects.changedepth(1);
+      interpreter.objects.dictmap = sqr.resident.properties;
+      // run the action in the base level as init
+      interpreter.action( obj.data.buffer );
+      // and put that back for use
+      sqr.resident.properties = interpreter.objects.dictmap;
+      interpreter.objects.changedepth(-1);      
+    }
+    // look for bevavior initialization
+    if( (obj = sqr.resident.properties['behavior']) != null) {
+      String pers = obj.data.buffer.string;
+      switch(pers) {
+        case 'vehicle': 
+          sqr.resident.behavior = new VehBeh(this, sqr.resident, sqr.properties); break; 
+        case 'pedestrian': 
+          sqr.resident.behavior = new PedBeh(this, sqr.resident, sqr.properties); break; 
+      }
+      //if( sqr.resident.behavior != null ) sqr.resident.behavior.init();
+    }
+    // look for a knowledge base
+    if( (obj = sqr.resident.properties['knowledge']) != null) {
+      String know = obj.data.buffer.string;
+      sqr.resident.knowledge = new KnowBase(queryConsole, english);
+      sqr.resident.knowledge.read(know);  
+      // we have no way of knowing if there was anything read!
+    }
+    // official enter the player into the board square so they show
     sqr.enter(sqr.resident);
     // look for POV player
     if( checkproperty( sqr.resident, 'POV', 'true')) {
@@ -188,12 +265,15 @@ class GameEngine {
     interpreter.objects.dictmap = board.properties;
     // create other gameengine objects
     load_engine_objects();
-    // clear activeplayer list then look through board squares for players to activate
+    // clear activeplayer list, POV
     BoardSquare bs;
     Iterable<BoardSquare> squares = board.bsMap.values;
     _activePlayers = new List<GPlayer>();
     povPlayer = null;
-    for( bs in squares ) 
+    // look through board squares for any players to place
+    // first reset the serial counters
+    GPlayer.serialnum = Item.serialnum = 0;
+    for( bs in squares )
       if( bs.resident != null ) _placeboardresident(bs);   
     // clear any selected cells from editing
     board.clearselected(); 
@@ -209,13 +289,19 @@ class GameEngine {
   }
   
   void slicecallback(Timer t)  {
-    // go thru active player list and run any action for players other than POV
+    // go thru active player list and look for player action other than POV
     if( paused ) return;
+    List playerList = _activePlayers.toList();
     GPlayer player; ObjectEntry obj;
-    for( player in _activePlayers ) {
+    for( player in playerList ) {
       if( player.POV ) continue;
+      if( player.sliceInit > 0 ) {
+        if( player.sliceCount-- > 0 ) continue;
+        player.sliceCount = player.sliceInit;
+        // count is zero - reset count, run once
+      }
+      _slicePlayer = player;
       if( (obj = player.properties['action']) != null) {
-        _slicePlayer = player;
         interpreter.objects.changedepth(1);
         interpreter.objects.dictmap = player.properties;
         // run the action in it's own level still
@@ -223,6 +309,7 @@ class GameEngine {
         interpreter.action( obj.data.buffer );
         interpreter.objects.changedepth(-2);
       }
+      if( player.behavior != null) player.behavior.slice();        
     }
     _slicePlayer = null;
   }
@@ -266,7 +353,7 @@ class GameEngine {
   }
   
   bool movePOVplayer( int direction, bool shift ) {
-    return move( direction, shift, povPlayer );  
+    return move( direction, shift, null, povPlayer );  
   }
   
   void changeorientation( GPlayer player, int dir ) {
@@ -278,9 +365,10 @@ class GameEngine {
       case BELOW: point = 'down'; break;
     }
     player.image = new ImageElement(src:'http://${HOSTNAME}/images/${player.imagename}-${point}.png');
+    player.image.height = player.image.width = board.imageSize;
   }
   
-  bool move(int direction, bool shift, GPlayer player ) {
+  bool move(int direction, bool shift, String classname, GPlayer player ) {
     // move a player on board based on direction supplied if game is running
     if( !running || player == null ) return false;
     bool changeorient = false;
@@ -308,6 +396,19 @@ class GameEngine {
           case ABOVE: direction = RIGHT; break;
           case BELOW: direction = LEFT; break;
         } break;
+    }
+    // check for class name to check
+    if( classname != null && classname != 'none' ) {
+      switch (direction) {
+        case BELOW:
+        if( player.location.below == null || player.location.below.classname != classname ) return false; break;
+        case ABOVE:
+        if( player.location.above == null || player.location.above.classname != classname ) return false; break;
+        case LEFT:
+        if( player.location.left == null || player.location.left.classname != classname ) return false; break;
+        case RIGHT:
+        if( player.location.right == null || player.location.right.classname != classname ) return false; break;
+      }
     }
     if( !shift && direction != player.direction ) {
       player.direction = direction;
@@ -362,6 +463,100 @@ class GameEngine {
           return true;
         }
         break;
+    }
+    return false;
+  }
+
+  int lookAround(int direction, int changedir, String classname) {
+    BoardSquare sqr; int lookdir = direction;
+
+    while( true ) {      
+      switch( lookdir ) {
+        case ABOVE: sqr = _slicePlayer.location.above;  break;
+        case BELOW: sqr = _slicePlayer.location.below;  break;
+        case LEFT:  sqr = _slicePlayer.location.left;  break;
+        case RIGHT: sqr = _slicePlayer.location.right;  break;
+      }
+      if( sqr == null || sqr.classname != classname ) {
+        // look for another square adjacent
+        if( changedir == LEFTWARD ){
+          switch(lookdir) {
+             case ABOVE: lookdir = LEFT;  break;
+             case BELOW: lookdir = RIGHT;  break;
+             case LEFT:  lookdir = BELOW;  break;
+             case RIGHT: lookdir = ABOVE;  break;
+          }
+        }
+        else if( changedir == RIGHTWARD ){
+          switch(lookdir) {
+             case ABOVE: lookdir = RIGHT;  break;
+             case BELOW: lookdir = LEFT;  break;
+             case LEFT:  lookdir = ABOVE;  break;
+             case RIGHT: lookdir = BELOW;  break;
+          }
+        }
+        else { 
+          //source.webcon.writeln('ERROR: leftward or rightward, found ${dirstring}');
+          return -1;
+        }
+        if( lookdir == direction )
+          /* once around, stuck */ 
+          return -1;
+        //
+      }
+      else return lookdir;
+    }
+  }
+
+  bool attemptPass( int direction, String passstring, String classname) {
+    //look for passing available
+    BoardSquare psqr, psqr2; 
+    int dir;
+    if( passstring == 'left') {
+      // update player direction
+      //_slicePlayer.direction = direction;
+      switch( direction) {
+        case ABOVE: dir = LEFT; psqr = _slicePlayer.location.left;  break;
+        case BELOW: dir = RIGHT; psqr = _slicePlayer.location.right;  break;
+        case LEFT:  dir = BELOW; psqr = _slicePlayer.location.below;  break;
+        case RIGHT: dir = ABOVE; psqr = _slicePlayer.location.above;  break;
+      }
+      if( psqr == null || psqr.resident != null || psqr.description != classname ) 
+        return false;
+      switch( direction) {
+        case ABOVE: psqr2 = psqr.above;  break;
+        case BELOW: psqr2 = psqr.below;  break;
+        case LEFT:  psqr2 = psqr.left;  break;
+        case RIGHT: psqr2 = psqr.right;  break;
+      }
+      if( psqr == null || psqr.resident != null || psqr.description != classname ) 
+        return false;
+      // go
+      if( move( dir, true, null, _slicePlayer ) &&       
+          move( direction, false, null, _slicePlayer )) return true;       
+    }
+    else if( passstring == 'right') {
+      // update player direction
+      //_slicePlayer.direction = direction;
+      switch( direction) {
+        case ABOVE: dir = RIGHT; psqr = _slicePlayer.location.right;  break;
+        case BELOW: dir = LEFT; psqr = _slicePlayer.location.left;  break;
+        case LEFT:  dir = ABOVE; psqr = _slicePlayer.location.above;  break;
+        case RIGHT: dir = BELOW; psqr = _slicePlayer.location.below;  break;
+      }
+      if( psqr == null || psqr.resident != null || psqr.description != classname ) 
+        return false;
+      switch( direction) {
+        case ABOVE: psqr2 = psqr.above;  break;
+        case BELOW: psqr2 = psqr.below;  break;
+        case LEFT:  psqr2 = psqr.left;  break;
+        case RIGHT: psqr2 = psqr.right;  break;
+      }
+      if( psqr == null || psqr.resident != null || psqr.description != classname ) 
+        return false;
+      // go
+      if( move( dir, true, null, _slicePlayer ) &&       
+          move( direction, false, null, _slicePlayer )) return true;
     }
     return false;
   }
@@ -432,8 +627,9 @@ class GameEngine {
         bs.resident.direction = RIGHT;
         // located a player: set location data and load the image element
         bs.resident.location = bs;
-        if( bs.resident.imagename != null )
+        if( bs.resident.imagename != null ) {
           bs.resident.image = new ImageElement(src:'http://${HOSTNAME}/images/${bs.resident.imagename}.png');
+          bs.resident.image.height = bs.resident.image.width = board.imageSize;        }
         // copy the player instance to _active players 
         _activePlayers.add(bs.resident);
         // call square.enter to make them show up
@@ -448,7 +644,7 @@ class GameEngine {
     // unpause the game
     paused = false;
   }
-  
+
   /*
    * predefined GameEngine objects
    * 
@@ -456,11 +652,18 @@ class GameEngine {
    * which can be used to access the properties of a givin player 
    * identified by 'POV' or ident
    */
-  static const  PLAYER_HELP = 
-    '''Player is used to create an object with the modifiable properties of an active player.
+static const String Game_Objects_help = '''
+These are script objects which are associated with game board and
+are only available while the game is in run mode.
+''';
+
+  static const String player_help = '''
+<p><i>player</i> new_object)name player_identifier</p>
+Player is used to create an object with the modifiable properties of an active player.
 The first argument is the name of the object to create, and the second the identifier of the
-player whose properties you wish to access, or "POV". Reading the value of the player object
-will return the success of the last Player usage.''';
+player whose properties you wish to access, or "POV". Reading the value of the Player object
+will return the success of the last usage of Player.
+''';
 
   int player_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
 
@@ -536,12 +739,16 @@ will return the success of the last Player usage.''';
    * Square: this is special object which when used will create another object
    * which can be used to access the properties of a givin square identified by ident
    */
-  static const  SQUARE_HELP = 
-    '''Square is used to create an object with the modifiable properties of a board square.
+  static const String square_help = '''
+<p><i>square</i> new_object_name square_identifier<br>
+value_object = <i>&#36;square</i><br>
+text_object = <i>&#36;square</i></p>
+Square is used to create an object with the modifiable properties of a board square.
 The first argument is the name of the object to create, and the second the identifier of the
 square whose properties you wish to access. Reading the value of the Square object will
 return the success of the last Square usage. Reading the output of the Square object will
-return the name of the resident if occupied, or 'none'.''';
+return the name of the resident, if any, occupying the square or else will return 'none'.
+''';
 
   int square_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
 
@@ -650,10 +857,13 @@ return the name of the resident if occupied, or 'none'.''';
    /*
    * Warp: this object will transport self or other beings to a specific location 
    */
-  static const  WARP_HELP = 
-    '''Warp is used to instantly transport a player to a specific location on the board 
-and is usually called by an action within a square. First argument is a player name reference,
-or POV, and the second argument is the location identifier of the location to warp to.''';
+  static const String warp_help = '''
+<p><i>warp</i> player_identifier location_identifier</p>
+Warp is used to instantly transport a player to a specific location on the board 
+and is usually called by an action property within a square. 
+First argument is a player name reference, or POV, and the second argument 
+is the location identifier of the location to warp to.
+''';
 
   int warp_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
 
@@ -712,16 +922,19 @@ or POV, and the second argument is the location identifier of the location to wa
   /*
    * Move: this object is used to move the player with the timer slice around  
    */
-  static const  MOVE_HELP = 
-    '''Move is used to move the player with the timer slice one square in any direction.
-The only argument is the direction: left, right, above, below, leftward, rightward, 
-forward, backward, shiftleft, shiftright. Reading the value of move object
-will return the success of the last move attempted.'''; 
+  static const String move_help = '''
+<p><i>move</i> classname direction</p>
+Move is used to move a player who is not the POV player one square in any direction.
+The first argument is the class to stay in, and the second is the direction: 
+left, right, above, below, leftward, rightward, forward, backward, shiftleft, shiftright. 
+Reading the value of move object will return the success of the last move attempted.
+'''; 
 
   int move_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
 
+    ObjectEntry obj;
     int tok, direction;
-    String dirstring;
+    String classname, dirstring;
     bool shift = false;
     data.value = 0;
 
@@ -737,6 +950,26 @@ will return the success of the last move attempted.''';
       source.webcon.writeln('ERROR: no slice player available. Must be called from player object');
       return CharBuffer.ERROR;
     }
+    // first is class spec
+    if( tok == TokenLexer.NAME )
+      classname = lexer.name;
+    else if( tok == TokenLexer.OBJECT ) {
+      if((obj = interpreter.objects.locate(lexer.name)) != null) {
+        if( obj.type == ObjectEntry.TEXT || 
+            ( obj.type == ObjectEntry.INTERNAL && obj.data != null && obj.data.buffer != null ))
+          classname = obj.data.buffer.string;
+        else {
+          source.webcon.writeln('ERROR: bad object for class: "${lexer.name}"');
+          return CharBuffer.ERROR;
+        }
+      }
+    } else {
+      source.webcon.writeln('ERROR: expecting class identifier, found ${lexer.lastscanchar}');
+      lexer.backup();
+      return CharBuffer.ERROR;      
+    }   
+    // then is the direction 
+    tok = lexer.nexttoken();
     if( tok == TokenLexer.NAME )
       dirstring = lexer.name;
     else if( tok == TokenLexer.OBJECT ) {
@@ -778,8 +1011,9 @@ will return the success of the last move attempted.''';
       source.webcon.writeln('ERROR: expecting location, found "${dirstring}"');
       return CharBuffer.ERROR;
     }
+    
     // perform the move
-    if( move( direction, shift,_slicePlayer ) ) data.value = 1;    
+    if( move( direction, shift, classname, _slicePlayer ) ) data.value = 1;    
     return 0;
   }
   
@@ -788,14 +1022,221 @@ will return the success of the last move attempted.''';
   }
   
   /*
+   * Merge this object is used to merge the player with the timer slice left or right  
+   */
+   static const String merge_help = '''
+<p><i>merge</i> class_description passing_direction</p>
+Merge left or right within a class. Merge doesn't change the player's direction,
+it's the same as passing. 
+Reading the value of merge object will return the success of the last merge attempted.
+'''; 
+
+  int merge_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
+
+    int tok, direction;
+    ObjectEntry obj;
+    String classname, passstring;
+    data.value = 0;
+
+    // create a lexer for method's use
+    TokenLexer lexer = new TokenLexer( source );
+    if( (tok = lexer.nexttoken()) == TokenLexer.HELP ) {
+      source.addAll(help.codeUnits);
+      source.deliver();
+      return 0;
+    }    
+    // make sure there is a _slicePlayer reference
+    if( _slicePlayer == null ) {
+      source.webcon.writeln('ERROR: no slice player available. Must be called from player object');
+      return CharBuffer.ERROR;
+    }
+    // first is class spec
+    if( tok == TokenLexer.NAME )
+      classname = lexer.name;
+    else if( tok == TokenLexer.OBJECT ) {
+      //ObjectEntry obj;
+      if((obj = interpreter.objects.locate(lexer.name)) != null) {
+        if( obj.type == ObjectEntry.TEXT || 
+            ( obj.type == ObjectEntry.INTERNAL && obj.data != null && obj.data.buffer != null ))
+          classname = obj.data.buffer.string;
+        else {
+          source.webcon.writeln('ERROR: bad object for class: "${lexer.name}"');
+          return CharBuffer.ERROR;
+        }
+      }
+    } else {
+      source.webcon.writeln('ERROR: expecting class identifier, found ${lexer.lastscanchar}');
+      lexer.backup();
+      return CharBuffer.ERROR;      
+    }   
+    // then the pass direction
+    tok = lexer.nexttoken();
+    if( tok == TokenLexer.NAME )
+      passstring = lexer.name;
+    else if( tok == TokenLexer.OBJECT ) {
+      //ObjectEntry obj;
+      if((obj = interpreter.objects.locate(lexer.name)) != null) {
+        if( obj.type == ObjectEntry.TEXT || 
+            ( obj.type == ObjectEntry.INTERNAL && obj.data != null && obj.data.buffer != null ))
+          passstring = obj.data.buffer.string;
+        else {
+          source.webcon.writeln('ERROR: bad object for direction: "${lexer.name}"');
+          return CharBuffer.ERROR;
+        }
+      }
+    } else {
+      source.webcon.writeln('ERROR: expecting direction identifier, found ${lexer.lastscanchar}');
+      lexer.backup();
+      return CharBuffer.ERROR;      
+    }
+    
+    if( attemptPass( _slicePlayer.direction, passstring, classname ))
+      data.value = 1;
+    return 0;
+  }   
+   
+  num merge_value(Map<String,ObjectEntry> dictmap, ObjectData data ) {    
+    return data.value;
+  }
+     
+  /*
+   * Forward: this object is used to move the player with the timer slice forward  
+   */
+  static const String forward_help = '''
+  <p><i>forward</i> class_description turning_direction passing_direction</p>
+  Forward is an advanced form of move. It takes three arguments: 
+  the class of the area to stay in, and the suggested turning direction 
+  if forward is not possible (leftward, rightward), and the passing direction(left,right).
+  Reading the value of move object will the success of the last move 
+  attempted(0=no move,1=foward,2=turn,3=pass)
+  '''; 
+  int forward_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
+
+    int tok, direction;
+    ObjectEntry obj;
+    String classname, dirstring, passstring;
+    data.value = 0;
+
+    // create a lexer for method's use
+    TokenLexer lexer = new TokenLexer( source );
+    if( (tok = lexer.nexttoken()) == TokenLexer.HELP ) {
+      source.addAll(help.codeUnits);
+      source.deliver();
+      return 0;
+    }    
+    // make sure there is a _slicePlayer reference
+    if( _slicePlayer == null ) {
+      source.webcon.writeln('ERROR: no slice player available. Must be called from player object');
+      return CharBuffer.ERROR;
+    }
+    // first is class spec
+    if( tok == TokenLexer.NAME )
+      classname = lexer.name;
+    else if( tok == TokenLexer.OBJECT ) {
+      //ObjectEntry obj;
+      if((obj = interpreter.objects.locate(lexer.name)) != null) {
+        if( obj.type == ObjectEntry.TEXT || 
+            ( obj.type == ObjectEntry.INTERNAL && obj.data != null && obj.data.buffer != null ))
+          classname = obj.data.buffer.string;
+        else {
+          source.webcon.writeln('ERROR: bad object for class: "${lexer.name}"');
+          return CharBuffer.ERROR;
+        }
+      }
+    } else {
+      source.webcon.writeln('ERROR: expecting class identifier, found ${lexer.lastscanchar}');
+      lexer.backup();
+      return CharBuffer.ERROR;      
+    }   
+    // then the turn direction
+    tok = lexer.nexttoken();
+    if( tok == TokenLexer.NAME )
+      dirstring = lexer.name;
+    else if( tok == TokenLexer.OBJECT ) {
+      if((obj = interpreter.objects.locate(lexer.name)) != null) {
+        if( obj.type == ObjectEntry.TEXT || 
+            ( obj.type == ObjectEntry.INTERNAL && obj.data != null && obj.data.buffer != null ))
+          dirstring = obj.data.buffer.string;
+        else {
+          source.webcon.writeln('ERROR: bad object for direction: "${lexer.name}"');
+          return CharBuffer.ERROR;
+        }
+      }
+    } else {
+      source.webcon.writeln('ERROR: expecting direction identifier, found ${lexer.lastscanchar}');
+      lexer.backup();
+      return CharBuffer.ERROR;      
+    }    
+    // then the pass direction
+    tok = lexer.nexttoken();
+    if( tok == TokenLexer.NAME )
+      passstring = lexer.name;
+    else if( tok == TokenLexer.OBJECT ) {
+      //ObjectEntry obj;
+      if((obj = interpreter.objects.locate(lexer.name)) != null) {
+        if( obj.type == ObjectEntry.TEXT || 
+            ( obj.type == ObjectEntry.INTERNAL && obj.data != null && obj.data.buffer != null ))
+          passstring = obj.data.buffer.string;
+        else {
+          source.webcon.writeln('ERROR: bad object for direction: "${lexer.name}"');
+          return CharBuffer.ERROR;
+        }
+      }
+    } else {
+      source.webcon.writeln('ERROR: expecting direction identifier, found ${lexer.lastscanchar}');
+      lexer.backup();
+      return CharBuffer.ERROR;      
+    }
+    //
+    // done gathering arguments: now get to work
+    //
+    BoardSquare sqr; int turn = RIGHTWARD;
+    switch( dirstring ) {
+      case 'leftward': turn = LEFTWARD; break;
+      case 'rightward': turn = RIGHTWARD; break;
+      case 'backward': turn = BACKWARD; break;
+    }
+    // look for direction to move
+    direction = lookAround( _slicePlayer.direction, turn, classname );
+    if( direction < 0 ) return 0;  // stuck
+    switch( direction ) {
+      case ABOVE: sqr = _slicePlayer.location.above;  break;
+      case BELOW: sqr = _slicePlayer.location.below;  break;
+      case LEFT:  sqr = _slicePlayer.location.left;  break;
+      case RIGHT: sqr = _slicePlayer.location.right;  break;
+    }
+    // is it occupied? if not, move
+    if( sqr.resident == null ) {
+      // perform the move
+      if( move( direction, false, null, _slicePlayer ) ) {
+        if( direction == _slicePlayer.direction ) data.value = 1;
+        else data.value = 2;
+      }
+      return 0;
+    }
+    // look for a pass
+    if( passstring == 'none' ) return 0;
+    if( attemptPass( direction, passstring, classname ))
+      data.value = 3;
+    return 0;
+ }
+  
+  num forward_value(Map<String,ObjectEntry> dictmap, ObjectData data ) {    
+    return data.value;
+  }
+  
+  /*
    * Proximity: this object is used to sense the direction or presence of other players
    */
-  static const  PROXIMITY_HELP = 
-    '''Proximity is used to sense the direction and presence of another player. The first
+  static const String proximity_help = '''
+<p><i>proximity</i> player_name distance_limit<br>
+text_object = <i>&#36;proximity</i></p>
+Proximity is used to sense the direction and presence of another player. The first
 argument is the name of the player to sense for, or POV. The next argument is the distance
 to limit the sense to. In this way, using distance = 1 will sense for an adjacent player. 
 The results of the proximity check is found in the text output of Proximity, and will be
-one of direction, left/right/up/down, or none''';
+one of direction, left/right/up/down, or none.
+''';
 
   int proximity_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
 
@@ -857,10 +1298,12 @@ one of direction, left/right/up/down, or none''';
    * Clone: this object is used to clone a new player from the player definitions and
    * place somewhere on the board
    */
-  static const  CLONE_HELP = 
-    '''Clone is used to clone a new player from the player definitions and place
+  static const String clone_help = '''
+<p><i>clone</i> player_name location_ident</p>
+Clone is used to clone a new player from the player definitions and place them
 somewhere on the board. The first argument is the name of the player to clone, and
-the second is the location ident of the location to place the new player''';
+the second is the location ident of the location to place the new player.
+''';
 
   int clone_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
     int         tok;
@@ -907,14 +1350,17 @@ the second is the location ident of the location to place the new player''';
   /*
    * Game: this object is used control game action
    */
-  static const  GAME_HELP = 
-    '''Game is used to control game action. It accepts at a minimum one control argument:
-stop, pause, speed, chain, return.
-'stop' stops the game. Once stopped, game cannot be restarted.
-'pause' will pause the game and stop autonomous players from moving, 'continue' will unpause the game.
-'speed' will modify timer speed. It accepts one argument, the timer interval in milliseconds.
-'chain' will chain load another game board and continue play on that board.
-'return' will return from a chain load game to the caller board.''';
+  static const String game_help = '''
+<p><i>game</i> control_argument [ setting ]</p>
+Game is used to control game action. It accepts at a minimum one control argument:
+stop, pause, continue, speed, chain, return.
+'stop' stops the game (once stopped, game cannot be restarted),
+'pause' will pause the game and stop autonomous players from moving, 
+'continue' will unpause the game, 'speed' will modify timer speed 
+(it accepts one argument, the timer interval in milliseconds),
+'chain' will chain load another game board and continue play on that board,
+'return' will return from a chain load game to the caller board.
+''';
 
   int game_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
     int tok; num interval;
@@ -959,6 +1405,7 @@ stop, pause, speed, chain, return.
         _createnewtimer( interval );
         break;
       case 'chain':
+        int saveimagesize;
         tok = lexer.nexttoken();
         if( tok != TokenLexer.NAME ) { 
           source.webcon.writeln('ERROR: expecting board name, found ${lexer.lastscanchar}');
@@ -973,11 +1420,14 @@ stop, pause, speed, chain, return.
         // save the _activePlayer list length
         board.activePlayersLength = _activePlayers.length;
         board.remove();           // hide current board by removing from gameelement
+        // keep the imagesize continuity
+        saveimagesize = board.imageSize;
         _chainStack.add(board);   // push it on stack
-        // create and load the chained board
+        // create an new gameboard instance and load the chained board
         board = new GameBoard( this, _boardelement, _mouseover, _messages );
         board.loadEngineProps = false;    // don't load engine props on chaining
         board.loadcallback = _chainboardloaded;
+        board.imageSize = saveimagesize;
         board.loadMap(lexer.name);
         break;        
       case 'return':
@@ -1006,11 +1456,13 @@ stop, pause, speed, chain, return.
   }
   
   /*
-   * Game: this object is used control game action
+   * Game: this object is used to update the message area with new text
    */
-  static const  MESSAGE_HELP = 
-    '''Message is used to update the text which shows in the board's message area.
-Message acts just like a text object.''';
+  static const String message_help = '''
+<p><i>message</i> =/+ text_object</p>
+Message is used to update the text which shows in the board's message area.
+Message acts just like a text object.
+''';
 
   int message_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
     int tok, tok2;
@@ -1094,7 +1546,11 @@ Message acts just like a text object.''';
     return 0;
   }
  
-  static const String NARRATIVE_HELP = '''
+  /*
+   * Narrative: this object is used to display a narrative text
+   */
+  static const String narrative_help = '''
+<p><i>narrative</i> narative_file_name</p>
 The Narrative object is used to display a game narrative on command.
 Following the narrative object should be the name of the narrative file.
 ''';  
@@ -1114,11 +1570,56 @@ Following the narrative object should be the name of the narrative file.
     }    
     if( tok == TokenLexer.NAME ) 
       pager.enterNarrative( lexer.name );
-    else {
+    else if( tok == TokenLexer.STRING ) {
+      pager.enterNarrative(lexer.string.string );
+    } else { 
       source.webcon.writeln('ERROR: expecting narrative filename, found "${lexer.lastscanchar}"');      
       return CharBuffer.ERROR;
     } 
     
+    return 0;  
+  }
+
+  /*
+   * Narrative: this object is used to display a narrative text
+   */
+  static const String slice_help = '''
+<p><i>slice</i> function value</p>
+The Slice object is used to control aspects of a player's time slice.
+The first argument is the function: 'time' is the only one defined.
+Following the function argument object should be a numeric value.
+''';  
+  
+  int slice_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
+
+    num value;
+    int tok, retval = 0;
+    
+    // create a lexer for method's use and look for help
+    TokenLexer lexer = new TokenLexer( source );
+
+    if( (tok = lexer.nexttoken()) == TokenLexer.HELP ) {
+      source.addAll(help.codeUnits);  
+      source.deliver();
+      return 0;
+    } 
+    if( tok != TokenLexer.NAME ) {
+      source.webcon.writeln('ERROR: expecting function. Found ${lexer.lastscanchar}');
+      lexer.backup();
+      return CharBuffer.ERROR;      
+    }
+    switch( lexer.name ) {
+      case 'time': 
+        tok = lexer.nexttoken();
+        if( tok == TokenLexer.NUMERIC ) 
+          _slicePlayer.sliceInit = lexer.value;
+          source.webcon.writeln('slice time set to ${lexer.value.toString()}');
+        break;
+      default: 
+        source.webcon.writeln('ERROR: expecting "time". Found ${lexer.name}');
+        break;
+    }
+      
     return 0;  
   }
 
@@ -1127,29 +1628,43 @@ Following the narrative object should be the name of the narrative file.
   //
   void load_engine_objects() {
     
-    ObjectEntry player = new ObjectEntry('player', PLAYER_HELP, player_input, null, player_value);
-    ObjectEntry square = new ObjectEntry('square', SQUARE_HELP, square_input, square_output, square_value);
-    ObjectEntry warp = new ObjectEntry('warp', WARP_HELP, warp_input, null, null);
-    ObjectEntry move = new ObjectEntry('move', MOVE_HELP, move_input, null, move_value);
-    ObjectEntry proximity = new ObjectEntry('proximity', PROXIMITY_HELP, proximity_input, 
-        proximity_output, null);
-    ObjectEntry clone = new ObjectEntry('clone', CLONE_HELP, clone_input, null, null);
-    ObjectEntry game = new ObjectEntry('game', GAME_HELP, game_input, null, null);
-    ObjectEntry message = new ObjectEntry('message', MESSAGE_HELP, message_input, null, null);
-    ObjectEntry narrative = new ObjectEntry('narrative', NARRATIVE_HELP, narrative_input, null, null);
+    ObjectEntry player = new ObjectEntry('player', player_help, player_input, null, player_value);
+    ObjectEntry square = new ObjectEntry('square', square_help, square_input, square_output, square_value);
+    ObjectEntry warp = new ObjectEntry('warp', warp_help, warp_input, null, null);
+    ObjectEntry move = new ObjectEntry('move', move_help, move_input, null, move_value);
+    ObjectEntry forward = new ObjectEntry('forward', forward_help, forward_input, null, forward_value);
+    ObjectEntry merge = new ObjectEntry('merge', merge_help, merge_input, null, merge_value);
+    ObjectEntry proximity = new ObjectEntry('proximity', proximity_help, proximity_input, proximity_output, null);
+    ObjectEntry clone = new ObjectEntry('clone', clone_help, clone_input, null, null);
+    ObjectEntry game = new ObjectEntry('game', game_help, game_input, null, null);
+    ObjectEntry message = new ObjectEntry('message', message_help, message_input, null, null);
+    ObjectEntry narrative = new ObjectEntry('narrative', narrative_help, narrative_input, null, null);
+    ObjectEntry slice = new ObjectEntry('slice', slice_help, slice_input, null, null);
+
     player.data     = new ObjectData();
     square.data     = new ObjectData();
     move.data       = new ObjectData();
+    forward.data    = new ObjectData();
+    merge.data      = new ObjectData();
     proximity.data  = new ObjectData();
     
     interpreter.objects.create(player);
     interpreter.objects.create(square);
     interpreter.objects.create(warp);
     interpreter.objects.create(move);
+    interpreter.objects.create(forward);
+    interpreter.objects.create(merge);
     interpreter.objects.create(proximity);
     interpreter.objects.create(clone);
     interpreter.objects.create(game);
     interpreter.objects.create(message);
     interpreter.objects.create(narrative);
+    interpreter.objects.create(slice);
   }
+  static Map helpindex = {
+    'player':player_help,'square':square_help,'wart':warp_help,'move':move_help,'forward':forward_help,
+    'merge':merge_help,'proximity':proximity_help,'clone':clone_help,'game':game_help,
+    'message':message_help,'narrative':narrative_help,'slice':slice_help
+    };
+
 }

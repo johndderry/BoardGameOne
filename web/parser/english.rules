@@ -1,0 +1,44 @@
+Complete: Sentence ENDOFINPUT				{ $$ = $1; }
+Complete: Sentence PERIOD					{ $$ = $1; }
+Complete: Sentence SEMICOLON				{ $$ = $1; }
+Complete: Interog  QUESTION					{ $$ = $1; }
+Complete: List PERIOD						{ $$ = $1; }
+
+Sentence: Sentence (pos=conjunction) Phrase		{ $$=parser.sent($1,$2,$3); }
+Sentence: Sentence COMMA Phrase					{ $$=parser.sent($1,$2,$3); }
+Sentence: Phrase								{ $$=parser.sent(null,null,$1); }
+
+Interog: (pos=interogative) VerbClause	    	{ $$=parser.intr($1,$2,null ); }
+Interog: (pos=interogative) NounClause	    	{ $$=parser.intr($1,null,$2 ); }
+Interog: (pos=interogative) VerbClause NounClause{ $$=parser.intr($1,$2,$3 ); }
+
+Phrase = left
+Phrase: NounClause VerbClause NounClause		{ $$=parser.phrs($1,$2,$3 ); }
+Phrase: VerbClause NounClause					{ $$=parser.phrs(null,$1,$2 ); }
+Phrase: NounClause VerbClause 					{ $$=parser.phrs($1,$2,null ); }
+
+List: COLON NounClause							{ $$=$1; }
+List: List COMMA NounClause						{ $$=parser.append($1,$3); }
+
+VerbClause: VModList (pos=verb)					{ $2.foremod=$1; $$=$2; }
+
+NounClause: NModList (pos=noun)					{ $2.foremod=$1; $$=$2; }
+NounClause: NModList (pos=pronoun)				{ $2.foremod=$1; $$=$2; }
+
+VerbClause: VerbClause (pos=adverb)				{ $1.backmod=parser.append($1.backmod,$2); $$=$1;}
+VerbClause: VerbClause PrepPhrs					{ $1.backmod=parser.append($1.backmod,$2); $$=$1;}
+VerbClause: (pos=verb)							{ $$=$1; }
+
+NounClause: NounClause (pos=adjective)			{ $1.backmod=parser.append($1.backmod,$2); $$=$1;}
+NounClause: NounClause PrepPhrs					{ $1.backmod=parser.append($1.backmod,$2); $$=$1;}
+NounClause: (pos=noun)							{ $$=$1; }
+NounClause: (pos=pronoun)						{ $$=$1; }
+
+PrepPhrs: (pos=preposition) NounClause			{ $$=parser.prephs($1,null,$2); }
+PrepPhrs: (pos=preposition) VerbClause			{ $$=parser.prephs($1,null,$2); }
+
+NModList: NModList (pos=adjective) 				{ $$=parser.append($1,$2); }
+NModList: (pos=adjective) 						{ $$=$1; }
+
+VModList: VModList (pos=adverb) 				{ $$=parser.append($1,$2); }
+VModList: (pos=adverb)							{ $$=$1; }

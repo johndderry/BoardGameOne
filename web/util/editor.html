@@ -1,7 +1,3 @@
-<!/*************************
-   *  BoardGameOne files   *
-   *  (c) John Derry 2015  *
-   *************************/>
 <!DOCTYPE html>
 
 <html>
@@ -11,57 +7,67 @@
     <link rel="stylesheet" href="editor.css">
   </head>
   <body>
-    <div id="map"><b><h3 id="gametitle"></h3></b>
-      Map Name<input type="text" id="mapName" value="Test">
+    <div id="map"><h4 id="gametitle"></h4>
+      <b>File</b> Name<input type="text" id="mapName" value="piertown">
       <button id="loadMap">Load</button><button id="saveMap">Save</button>
       <button id="useLocal">UseLocal</button><button id="useWeb">UseWeb</button>
       <button id="loadScratch">LoadScratch</button><button id="saveScratch">SaveScratch</button>
+      <button id="clearScratch">ClearScratch</button>
     </div>
-    <div>  
-      Rows<input type="text" id="rows" size="4">
-      Cols<input type="text" id="cols" size="4">
+    <div><b>New</b>
+      Rows<input type="text" id="rows" size="3">Cols<input type="text" id="cols" size="3">
       <button id="create">Create</button>
-      <button id="addRow">AddROW</button><button id="addCol">AddCOL</button>
-      <b>Images</b><select id="imageDir"></select>Count
-      <input type="text" id="imageRowCnt" size="4" value="38"><button id="reloadImages">Reload</button>
-      <b>Scratch</b><button id="clearScratch">Clear</button>
+      <button id="addRow">AddRow</button><button id="addCol">AddCol</button>
+      Size<input type="text" id="imageSize" size="3" value="25"><b>Images</b>      
+      <select id="imageDir"></select>Count<input type="text" id="imageRowCnt" size="4" value="38">
+      <button id="loadImages">Load</button><button id="clearImages">Clear</button>
     </div>
     <div id="mainArea"></div>
+    <div id="images"></div>
     <div id="toolbox">
       <b>Board:</b> Multi<input type="checkbox" id="multi"> Range<input type="checkbox" id="range">
       <button id="copyBoard">Copy</button><button id="pasteBoard">Paste</button>
       Property<select id="propSelect">
-        <option value="none">none</option>
         <option value="locked">locked</option>
         <option value="desc">desc</option>
+        <option value="class">class</option>
         <option value="imagename">imagename</option>
         <option value="action">action</option>
       </select><input type="text" id="propValue">
       <button id="updateProp">Update</button>
-      <button id="boardProps">EditProperties</button>
+      <button id="boardProps">BoardProperties</button>
       <button id="dropPlayer">DropPlayer</button><button id="dropItem">DropItem</button><br>
-      <b>Players:</b><button id="copyPlayers">Copy</button><button id="pastePlayers">Paste</button> 
+      <b>Players:</b>
+      <button id="copyPlayers">Copy</button><button id="pastePlayers">Paste</button> 
       <select id="playerSelect"></select>
       <button id="playerEdit">Edit</button><button id="playerPlace">Place</button>
-      <input type="text" id="playerName">
-      <button id="playerCreate">Create</button><button id="playerDelete">Delete</button><br>
-      <b>Items:</b><button id="copyItems">Copy</button><button id="pasteItems">Paste</button>
+      {Name<input type="text" id="playerName">
+      <button id="playerCreate">Create</button>} <button id="playerDelete">Delete</button><br>
+      <b>Items:</b>
+      <button id="copyItems">Copy</button><button id="pasteItems">Paste</button>
       <select id="itemSelect"></select>
       <button id="itemEdit">Edit</button><button id="itemPlace">Place</button>
-      <input type="text" id="itemName">
-      <button id="itemCreate">Create</button><button id="itemDelete">Delete</button>
+      {Name<input type="text" id="itemName">
+      <button id="itemCreate">Create</button>} <button id="itemDelete">Delete</button>
     </div>
     <div id="propedit" class="peditor"></div>
     <div id="runarea">
       <button id="swapMain">Swap</button>     
       <button id="run">Run</button><button id="singlestep">SingleStep</button>
       <button id="step">Step</button><button id="stop">Stop</button>
-      Source<button id="clear" class="source">Clear</button>
-        <input type="text" size="60" class="source">
-        <div class="source"></div>
-      Console<button id="clear" class="console">Clear</button>
-        <input type="text" size="60" class="console">
+      Console
+        <input type="text" size="40" class="console">
+        <button id="clear" class="console">Clear</button>
         <div class="console"></div>
+      Source
+        <input type="text" size="60" class="source">
+        <button id="clear" class="source">Clear</button>
+        <div class="source"></div>
+
+        <select id="helpRoot"></select><select id="helpSelect"></select> 
+        <input type="text" size="30" class="helpdiv">
+        <button id="clear" class="helpdiv">Clear</button>
+        <div class="helpdiv"></div>
       </div>
     <script type="application/dart" src="editor.dart"></script>
     <script src="../packages/browser/dart.js"></script>

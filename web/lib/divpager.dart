@@ -1,31 +1,62 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
-library divpager;
-
-import 'dart:html';
-import 'interpreter.dart';
-import 'gameboard.dart';
-import 'gameengine.dart';
+part of boardgameone;
 
 class DivPager {
   
   bool isEditor, showingConsole, showingNarrative;
 
-  ButtonElement     consoleClear;
-  TextInputElement  consoleInput;
+  ButtonElement     consoleClear, chatClear;
+  TextInputElement  consoleInput, chatInput;
+  DivElement        consoleDiv, chatDiv;
+  SelectElement     chatWith;
+  
   GameEngine        engine;
   Possessions       possessions;
+  Parser            queryParser;
+  KnowBase          base;
+
   MandyInterpreter  mandy;
   TitleElement      title;
   HeadingElement    gametitle;
   DivElement        mainDiv, boardDiv, mouseoverDiv, messagesDiv, 
-                    possessionsDiv, consoleDiv;
+                    possessionsDiv;
   var               boardloadcallback;
 
   void enterNarrative(String narrative) {
         _placeNarrative(narrative, 'You have entered the ${narrative}.<br>');
+  }
+  
+  void _chatlistener() {
+    WordNode wn;
+    KnowBase playbase;
+    List<PackSent> queryList;
+    PackSent psent;
+    StringBuffer buf;
+    
+    playbase = engine.playerKnow( chatWith.value );
+    if( playbase == null ) playbase = base;
+    
+    queryParser.endofinput = false;
+    while( queryParser.endofinput == false ) {
+      wn = queryParser.parse();
+      if( wn == null ) {
+        engine.queryConsole.writeln("Sorry, I don't understand that.");
+        continue;
+      }
+      queryList = playbase.query(wn);
+      if( queryList == null || queryList.length == 0 ) {
+        engine.queryConsole.writeln("I don't know.");
+        continue;      
+      }
+      if( wn.nonw == 0 ) continue;
+      
+      buf = new StringBuffer();
+      buf.write('${chatWith.value} says: ');
+      for( psent in queryList ) { 
+        base.makesentence(buf, psent.root, "");
+        buf.write('. ');
+      }
+      engine.queryConsole.writeln( buf.toString() );
+    }
   }
   
   void _keylistener(KeyboardEvent e) {
@@ -81,10 +112,19 @@ class DivPager {
     engine.paused = true;
     while( (child = mainDiv.lastChild) != null ) 
       child.remove();
-    mainDiv.appendText('Chat');
-    mainDiv.append(consoleClear);
+    mainDiv.appendText('Console');
     mainDiv.append(consoleInput);
+    mainDiv.append(consoleClear);
     mainDiv.append(consoleDiv);
+    
+    mainDiv.appendText('Chat');
+    while( (child = chatWith.lastChild) != null ) 
+      child.remove();
+    chatWith.appendHtml(engine.Players(0));
+    mainDiv.append(chatWith);
+    mainDiv.append(chatInput);
+    mainDiv.append(chatClear);
+    mainDiv.append(chatDiv);
     showingConsole = true;
   }
 
@@ -130,25 +170,54 @@ class DivPager {
     consoleClear = new ButtonElement();
     consoleInput = new TextInputElement();
     consoleDiv = new DivElement();
+    chatWith = new SelectElement();
+    chatClear = new ButtonElement();
+    chatInput = new TextInputElement();
+    chatDiv = new DivElement();
     
+    boardDiv.id = 'board';
     mouseoverDiv.id = 'mouseover';
     messagesDiv.id = 'messages';
+    
     consoleClear.appendText("Clear");
     consoleClear.id = 'clear';
     consoleInput.size = 60;
     consoleClear.className = consoleInput.className = 
       consoleDiv.className = 'console';
     
-    // have to place some console elements for new MandyInterpreter() to find them
-    mainDiv.append(consoleClear);
+    chatClear.appendText("Clear");
+    chatClear.id = 'clear';
+    chatInput.size = 60;
+    chatClear.className = chatInput.className = 
+      chatDiv.className = 'chat';
+    
+    // have to place some console elements for MandyInterpreter to find them
     mainDiv.append(consoleInput);
+    mainDiv.append(consoleClear);
     mainDiv.append(consoleDiv);
     
     mandy = new MandyInterpreter( document, sourceclass, consoleclass );
     engine = new GameEngine(mandy, boardDiv, mouseoverDiv, messagesDiv);
     possessions = new Possessions(possessionsDiv);
-
     //mandy.console.outputeventhandler = placeConsole;
+
+    // have to place some chat elements for WebConsole to see
+    mainDiv.append(chatInput);
+    mainDiv.append(chatClear);
+    mainDiv.append(chatDiv);
+    
+    engine.queryConsole = new WebConsole( document, '.chat');
+    engine.queryConsole.inputeventhandler = _chatlistener;
+    engine.english = new englishParserDef();  
+
+    queryParser = new Parser(engine.queryConsole, engine.english);
+    engine.english.parser = queryParser;
+    engine.english.createwords();
+    engine.english.createrules();
+    // read a default knowledge base
+    base = new KnowBase(engine.queryConsole, engine.english);
+    base.read('default');
+    
     engine.pager = this;
     engine.possessions = possessions;
     engine.board.loadcallback = _boardloaded;

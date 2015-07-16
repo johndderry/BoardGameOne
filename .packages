@@ -1,0 +1,6 @@
+# Generate by pub on 2015-07-16 00:40:25.017.
+# This file contains a map from Dart package names to Dart package locations.
+# Dart tools, including the Dart VM and Dart analyzer, rely on the content.
+# AUTO GENERATED - DO NOT EDIT
+BoardGameOne:file:///home/john/.pub-cache/hosted/pub.dartlang.org/BoardGameOne-0.0.0/lib/
+browser:file:///home/john/.pub-cache/hosted/pub.dartlang.org/browser-0.10.0+2/lib/

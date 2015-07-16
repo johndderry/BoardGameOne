@@ -25,3 +25,14 @@ h1, p {
   text-align: center;
   margin-top: 140px;
 }
+
+div#controlDiv {
+}
+
+div#sourceDiv {
+  background-color: #60F860;  
+}
+
+div#consoleDiv {
+  background-color: #60F8F8;  
+}

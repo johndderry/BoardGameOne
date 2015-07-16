@@ -1,11 +1,10 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
-library standardobjects;
+part of interpreter;
 
-import 'bufferedhtmlio.dart';
-import 'interpreter.dart';
+const String Action_Scripting_help = '''
+Mandy is the scripting language used in Board Game One. Mandy style instructions go in
+the various action properties ( action, enteraction, leaveaction ) and these instructions
+are carried out at the appropriate time.
+'''; 
 
 class ExprStackElem {
   static int
@@ -42,11 +41,11 @@ class StandardObjects {
     UNARYPREC   = 5;
   
   static final Map additional_help = {
-    'general':  general_help,
-    'quoting':  quoting_help,
-    'naming':   naming_help,
-    'expression': expression_help,
-    'methods':  methods_help
+    'general':  general_help_help,
+    'quoting':  quoting_help_help,
+    'naming':   naming_help_help,
+    'expression': expression_help_help,
+    'methods':  methods_help_help
   };
   
   CharBuffer  _conbuf, _srcbuf;
@@ -392,6 +391,81 @@ class StandardObjects {
     return retcode;
   }
   
+  /***************************************************
+   * ADDITIONAL HELP TEXT
+   * 
+   * Put this first for the sake of extractmandydoc.dart,
+   * note the position of the first static string: 
+   * 
+   **************************************************/
+  static const String general_help_help = '''
+Mandy is a very simple but powerful object-oriented scripting language.<br><br>
+The first thing that is encountered from the script input is considered to be 
+the name of an object to invoke. Following that are possible instructions 
+to that object, which generally take the form of a simple name, list of names 
+separated by commas, a quoted string, an expression in parenthesis; or  
+an equals, plus or minus sign followed by quoted or unquoted text. A few objects
+take multiple names for their instructions, like the object DUP.<br><br>
+There are a small number of predefined objects, and some of those
+are able to create additional objects. An object found in the script input with it's 
+instructions invokes the Input method of the object. Otherwise, when an object name
+is used as the instruction of another object, in a quoted string, or in an expression
+it will considered a reference to that object, and will be prefaced with a dollar sign
+and will invoke either the Output or Value method. Basically that's all there is to it.<br><br>
+Two other things to start: "list 0" will give you a list of all predefined objects;
+and an object name followed with a question mark will show help for that object.
+''';
+  
+  static const String quoting_help_help = '''
+Whenever text is entered as an instruction to an object, it may be quoted 
+in order to make it into a string of characters, which could then include 
+spaces and tab characters which would normally end the instruction text.
+In addition to that, use of quoting controls whether object references
+(which are the name of the object prefaced by the dollar sign) are to be
+expanded by the Output method to represent their contents or not.
+The basic rule is:<ul>
+<li>text without any quoting undergoes expansion of the object</li>
+<li>text quoted with single quotes (') DOES NOT undergo expansion</li> 
+<li>text quoted with double quotes (\") DOES undergo expansion</li></ul>
+''';
+  
+  static const String naming_help_help = '''
+The names of new objects that you create can be simple or they can refer
+to a heirarchy of objects that you create. The first rule of naming is that
+names can contain characters, numbers, and most punctuation characters that
+are not already reserved for object instruction.
+Characters reserved for instruction are: \$  ?  !  =  -  + ' "<br>
+To create heirarchy when naming objects, use the foward-slash (/)
+to indicate increasing depth of heirarchy. Example:
+ foo/bar indicates bar is subordinate to foo, and
+ foo/bar/zoo indicates bar is subordinate to foo, and zoo subordinate to bar.
+''';
+  
+  static const String expression_help_help = '''
+Expressions are entered in their natural form using parenthesis to indicate
+grouping. Operators allowed in expressions are:
+ +  -  *  /  ^  <  >  =  <>  or  and  not
+''';
+  
+  static const String methods_help_help = '''
+Methods are a means of accessing properties and stored routines of an
+object. They are tailored to meet the needs of each object.
+You create your own methods when you use Object to read a prototype
+and that prototype contains routines.
+There are also automatic methods available to access the value and text
+properties of any object which has them. That includes ones which you create
+with Object as well as the GUI objects, which keep GUI configuration in
+properties.n\
+To indicate a method, append the method name to the object with a period.
+This works when invoking the object for input at the beginning of the line,
+or using it with expansion by prefacing it with the dollar sign '\$'.
+See help on "quoting".
+'''; 
+
+static const String Standard_Objects_help = '''
+These are the basic objects in the script language.
+''';
+  
   /************************************************************
    * PREDEFINED SIMPLE OBJECTS                                *
    * accept, echo, help, list, call, break, verbose, compare  *
@@ -423,11 +497,14 @@ class StandardObjects {
    */
 
   static const String accept_help = '''
-The Accept object is used to accept a line of input from the player.
-It is generally invoking inside a routine and the result is assigned to
-a Text object.\
-In an assignment it's refered to as \$accept, and will cause Mandy to wait
-for a line of input text.
+<p><i>accept</i> text_object<br>text_object = <i>&#36;accept</i></p>
+The Accept object is used to accept a line of input characters from the player.
+It is generally invoking inside of a routine and the result is assigned to
+a Text object. This basic form is "accept textobject".<br>
+However, in an assignment to a text object, it's refered to as \$accept.
+This assignment form is "textobject = \$accept". In either case, 
+the accept object will cause Mandy to wait for a line of text input from the console
+and then assign it to the text object.
 ''';
   
   int accept_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -479,8 +556,9 @@ for a line of input text.
    */
   
   static const String echo_help = '''
+<p><i>echo</i> object</p>
 The Echo object is used to display text and values to the player.
-It will echo the next token on the input line, substituting any
+It will echo to the console the next object on the input line, substituting any
 object references for the contents of the object. Object references
 are the name of the object preceded by the dollar sign (\$).
 Text can be quoted with single (') or double (") quotes.
@@ -581,11 +659,13 @@ See help on 'quoting' for more information on quoting in Mandy.
   */
   
   static const String help_help = '''
-The Help object will offer help on the next list of tokens which follow.
-These can be object names, like 'help', or an additional topic if available.
-Help offerered for objects is the same as using ? with the object itself.
-Besides objects, Help offers help on topics: quoting, expressions, naming,
-methods, predefined, as well as 'all'.
+<p><i>help</i> object_name[,object_name,...]</p>
+The Help object will offer help on the list of subjects which follow.
+Subjects can be object names, like 'help', or an additional topic if available.
+Help offerered for objects using the "help objectname" form is the exact same help 
+supplied by using ? with the object itself "objectname ?".<br><br>
+Besides objects, Help offers help on these topics: 
+general, quoting, naming, expressions and methods.
 ''';
 
   int help_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -601,15 +681,26 @@ methods, predefined, as well as 'all'.
     if( (tok = lexer.nexttoken()) == TokenLexer.HELP ) 
       _conbuf.addAll(help.codeUnits);
     
-    else if( (names = lexer.getnames(tok)) != null ){
+    else if( (names = lexer.getnames(tok)) != null ) {
       // _srcbuf.webcon.write('looking for help on: ');
       // try to get help on each name token on the source line
-      for( var n in names ) {
+      if( names.length  == 0 ) {
+        _conbuf.addAll(additional_help['general'].codeUnits);
+        _conbuf.addAll('<br><br>'.codeUnits);
+    }
+      else for( var n in names ) {
         //_srcbuf.webcon.write('${lexer.name} ');
-        if( referals != null && (oe = referals.locate(n)) != null )
+        if( referals != null && (oe = referals.locate(n)) != null ) {
+          _conbuf.addAll('*${n}*<br>'.codeUnits);
           _conbuf.addAll(oe.help.codeUnits);
-        else if( (addhelp = additional_help[n]) != null )
-          _conbuf.addAll(addhelp.codeUnits);        
+        }
+        else if( (addhelp = additional_help[n]) != null ) {
+          _conbuf.addAll('*${n}*<br>'.codeUnits);
+          _conbuf.addAll(addhelp.codeUnits);
+        }
+        else 
+          _conbuf.addAll('*${n}* No Help Available'.codeUnits);
+        _conbuf.addAll('<br><br>'.codeUnits);
       }
     }
     
@@ -622,12 +713,15 @@ methods, predefined, as well as 'all'.
  */
   
   static const String list_help = '''
+<p><i>list</i> level_number</p>
 The list object will provide a list of objects in the dictionarie(s).
 Used alone it will show objects from all dictionary levels. Levels
 increase when Routine-created objects are called with the Call object.
 When a numeric expression is provided, only dictionaries from that level
-or greater are shown. Level 0 contains all language objects, and level 1
-and greater contain all created objects.
+or greater are shown. Level 0 contains all predefined language objects,
+and level 1 and greater contain all created objects.<br><br> When the game engine
+is running, level 1 contains global game objects, and if any action scripts
+are in effect level 2 contains objects created in that script.
 ''';
   
   int list_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -647,12 +741,8 @@ and greater contain all created objects.
       startlevel = expression( lexer );
     else if( tok == TokenLexer.NUMERIC )
       startlevel = lexer.value;
-    
-    
-    if( startlevel == null ) {
-      _srcbuf.webcon.writeln('ERROR: bad level expression  at "${lexer.lastscanchar}"');
-      return ERROR;
-    }
+      
+    if( startlevel == null ) startlevel = 0;
     
     for( var i = startlevel; i >= 0; i-- ) {
       _conbuf.addAll(i.toString().codeUnits);
@@ -661,8 +751,8 @@ and greater contain all created objects.
       if( out != null ) _conbuf.addAll(out.codeUnits);
       _conbuf.addAll('<br>'.codeUnits);
     }
-    _conbuf.deliver();
     
+    _conbuf.deliver();
     return 0;  
   }
 
@@ -681,6 +771,7 @@ and greater contain all created objects.
    */
   
   static const String call_help = '''
+<p><i>call</i> text_object</p>
 The Call object is used to invoke a stored routine.
 Following the Call object should be the name of an object
 which has been previously created with the Routine object.
@@ -766,10 +857,11 @@ which has been previously created with the Routine object.
    */
   
   static const String verbose_help = '''
+<p><i>verbose</i> number</p>
 The Verbose object is used to control the level of verbosity, which is
 the level information that Mandy provides as it interprets instructions.
 The Verbose object acts just like a object created by Value and takes
-the same methods: =, + and -.
+the same methods: =, + and -.<br>
 The value of verbosity can be numeric from 0 to 4.
 ''';
   
@@ -826,6 +918,7 @@ The value of verbosity can be numeric from 0 to 4.
    */
   
   static const String break_help = '''
+<p><i>break</i> instructions</p>
 The Break object is used to interupt interpretation of the current stream
 and enter an interactive Mandy state. Whatever follows on the input line
 is passed to the interpreter and interpeted before any other input.
@@ -862,6 +955,7 @@ To return to the previous interupted state use the End object.
    */
     
   static const String compare_help = '''
+  <p><i>compare</i> object_1 object_2</p>
   The compare object will compare two objects and return the relationship as a value.
   When the two objects are text objects, compare will perform alphabetic sorting. 
   Compare is first used with the two objects supplied on the input line as arguments.
@@ -985,15 +1079,12 @@ To return to the previous interupted state use the End object.
   
   static const String textobj_help = '''
 An object created with the Text object can store and manipulate text.
-These methods are available for text objects:
-\t= new_text_to_assign
-\t+ new_text_to_append
-\t@ accept_text_until_end
-The new_text can be quoted with single (') or double(") quotes,
-and substitution for object references are expanded for = and +.
-See help on 'quoting' for more information on quoting in Mandy.
-Accept_text_until_end accepts unexpanded text from multiple lines
-until an End object is seen.
+These methods are available for text objects:<br>
+= text_to_assign<br>
++ text_to_append<br>
+The text_to_assign or text_to_append can be quoted with single (') or double(")
+quotes, and substitution for object references are expanded for both = and +.
+See help on 'quoting' for more information on quoting.<br>
 ''';
   
   int textobj_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -1104,11 +1195,12 @@ until an End object is seen.
   
   static const String valueobj_help = '''
 An object created with the Value object can store and manipulate values.
-These methods are available for value objects:
-\t= new_value_expression_to_assign
-\t+ new_value_expression_to_add
-\t- new_value_expression_to_subtract
-For help with expressions, see help on 'expressions'
+These methods are available for value objects:<br>
+= value_expression_to_assign<br>
++ value_expression_to_add<br>
+- value_expression_to_subtract<br>
+value_expression_... are expressions encased in parenthesis. 
+See help on 'expressions' for more information on expressions.
 ''';  
 
   int valueobj_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -1282,9 +1374,11 @@ See additional help on 'methods'.
    */
   
   static const String text_help = '''
-The Text object is used to create new objects which can hold text
-or Mandy routines, which are a set Mandy instructions which are
-invoked later. Following the Text object should be the name which the new object will take.
+<p><i>text</i> object_name[,object_name,...]</p>
+The Text object is used to create new objects which can hold either text
+or routines (routines are a set Mandy instructions which are
+invoked later). Following the Text object should be the name, or a list of names,
+which the new object(s) will take.
 See help on 'naming' for more information on object naming in Mandy.
 ''';
   
@@ -1338,8 +1432,10 @@ See help on 'naming' for more information on object naming in Mandy.
    */
   
   static const String value_help = '''
+<p><i>value</i> object_name[,object_name,...]</p>
 The Value object is used to create new objects which can hold values.
-Following the Value object should be the name which the new object will take.
+Following the Value object should be the name, or a list of names,
+which the new object(s) will take.
 See help on 'naming' for more information on object naming in Mandy.
 ''';
   
@@ -1393,9 +1489,10 @@ See help on 'naming' for more information on object naming in Mandy.
    */
   
   static const String object_help = '''
-The Object object is used to create new objects from user-supplied
-prototypes. Following the Object object should be a list of names
-which the new objects will take.
+<p><i>object</i> object_name[,object_name,...]</p>
+The Object object is used to create new general purpose objects. These objects
+will be derived from user-supplied prototypes. Following the Object object 
+should be the name, or a list of names, which the new object(s) will take.
 ''';
   
   int object_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -1451,12 +1548,13 @@ which the new objects will take.
    */
   
   static const String dup_help = '''
-The dup object is used to duplicate an existing object, making an\
-exact copy with a new name. Text and value objects will retain their data,\
-and for objects all properties and methods are duplicated as well as\
-any property data associated.\
-Following the dup object should be the name of the object to \
-duplicate, and following that is the name that the new object will take.\
+<p><i>dup</i> new_object_name object_name</p>
+The dup object is used to duplicate an existing object, making an exact copy 
+with a new name. Text and Value objects will retain their original data,
+and for Object objects all properties and methods are duplicated into the new object.
+The dup object is unusual in that it takes two instructions: following the dup object 
+should be the name of the object to duplicate, and following that is the name 
+that the new object will take.
 ''';
   
   int dup_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -1521,9 +1619,10 @@ duplicate, and following that is the name that the new object will take.\
    */
   
   static const String end_help = '''
-The End object is used to end a block of instructions which\
-have been started by the use of a For, While, If or Routine object.\
-It can be also used to end the Mandy interpreter itself.\
+<p><i>end</i></p>
+The End object is used to end a block of instructions which
+have been started by the use of a For, While, or If object.
+It can be also used to end the Mandy interpreter itself.
 ''';
   
   int end_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -1553,8 +1652,9 @@ It can be also used to end the Mandy interpreter itself.\
    */
   
   static const String else_help = '''
-The Else object is used to end the block of instructions executed when true,\
-and begin the block of instructions executed when false.\
+<p><i>else</i></p>
+The Else object is used to end the block of conditional instructions executed 
+when true, and begin the block of conditional instructions executed when false.
 ''';
 
   int else_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -1586,13 +1686,14 @@ and begin the block of instructions executed when false.\
    */
   
   static const String if_help = '''
-The If object is used to conditionally execute a set of instructions.\
-Following the If object is an expression which will be evaluated for truth.\
-If true, all the input lines following the If object will be executed until\
-either an Else or End object is encountered. If false, all the input lines\
-will be ignored until an Else object is encountered, and the lines following\
-the Else until an End object will be executed. If no Else is encountered,\
-all lines will be ignored until the End.\
+<p><i>if</i> condition</p>
+The If object is used to conditionally execute a set of instructions.
+Following the If object is an expression which will be evaluated for truth.
+If true, all the input lines following the If object will be executed until
+either an Else or End object is encountered. If false, all the input lines
+will be ignored until an Else object is encountered, and the lines following
+the Else until an End object will be executed. If no Else is encountered,
+all lines will be ignored until the End.
 ''';
 
   int skipblock(TokenLexer lexer, bool stopOnElse ) {
@@ -1692,17 +1793,18 @@ all lines will be ignored until the End.\
    */
   
   static const String while_help = '''
-The While object is used to repeatedly execute a set of instructions\
-while a certain condition is true. The condition is evaluated before\
-each execution of the set, and when events occuring within the instructions\
-change the condition in then that will be reflected in the evaluation\
-and the loop can end.\
-Immediately following the While object is an expression which will be\
-evaluated for truth. If true, all instructions on the lines following will\
-be executed, until an End object is encountered. At that point, the\
-expression will be re-evaluated and if still true, the instructions\
-will be executed again. This will continue until the condition\
-is finally evaluated false.\
+<p><i>while</i> condition</p>
+The While object is used to repeatedly execute a set of instructions
+while a certain condition is true. The condition is evaluated before
+each execution of the set, and when events occuring within the instructions
+change the condition in then that will be reflected in the evaluation
+and the loop can end.<br>
+Immediately following the While object is an expression which will be
+evaluated for truth. If true, all instructions on the lines following will
+be executed, until an End object is encountered. At that point, the
+expression will be re-evaluated and if still true, the instructions
+will be executed again. This will continue until the condition
+is finally evaluated false.
 ''';
   
   int while_input(CharBuffer source, Map<String,ObjectEntry> dictmap, ObjectData data, String help ) {
@@ -1716,6 +1818,7 @@ is finally evaluated false.\
     // this assumes the conditional part is already in source buffer
     condbuf = new CharBuffer( null );
     condlist = source.innerList;
+    //source.innerList.clear();
     condlexer = new TokenLexer(condbuf);
     
     // now read all lines until end into another buffer      
@@ -1724,6 +1827,7 @@ is finally evaluated false.\
     execlist = execbuf.innerList;
     execlexer = new TokenLexer(execbuf);
     
+    source.innerList.clear();
     while( true ) {
       // perform while block while condition is true
       // evaluate condition
@@ -1738,7 +1842,7 @@ is finally evaluated false.\
           _conbuf.addAll('(while completed)'.codeUnits); 
           _conbuf.deliver();
         }
-        break;        
+        return 0;       
       }
       
       if( interp.verbosity > MandyInterpreter.VERBOSE_LOW ) {
@@ -1756,72 +1860,6 @@ is finally evaluated false.\
     return 0;  
   }
 
-  /**********************************
-   * ADDITIONAL HELP TEXT
-   **********************************/
-  
-  static const String general_help = '''
-Mandy is a very simple but powerfull object-oriented language.n\
-Mandy could be called Object Control Language because it borrows
-ideas from Tcl/Tk, yet the syntax is more like Basic.n\
-The first thing on the input line is the name of an object to invoke.
-Following that are instructions to that object, if required.
-There are a small number of predefined objects, and some of those
-are able to create additional objects. Basically that's it.n\
-Two other things to start: list will give you a list of existing objects,
-and follow an object name with a question mark (?) to ask for object help.
-''';
-  
-  static const String quoting_help = '''
-Whenever text is entered as input to an object, it may be quoted in order
-to include spaces and tab characters which would normally end the text.
-In addition to that, use of quoting controls whether object references
-(which are the name of the object prefaced by the dollar sign) are to be
-expanded to represent their contents or not. The basic rules are:
-\ttext without any quoting receieves expansion of objects
-\ttext quoted with single quotes (') DOES NOT receive expansion 
-\ttext quoted with double quotes (\") receives expansion of objects
-''';
-  
-  static const String naming_help = '''
-CREATING:
-  The names of new objects that you create can be simple or they can refer
-to a heirarchy of objects that you create. The first rule of naming is that
-names can contain characters, numbers, and most punctuation characters that
-are not used by OCL objects. Characters reserved for OCL object use are:
-\t\$\t?\t!\t=\t-\t+\t'\t\"n\
-To create heirarchy when naming objects, use the foward-slash (/)
-to indicate increasing depth of heirarchy. Example:
-\tfoo/bar\t indicates bar is subordinate to foo, and
-\tfoo/bar/zoo\tindicates bar is subordinate to foo, and zoo subordinate to bar.
-USING:
-  When refering to objects by names, whether it's the standard objects or
-ones you create, it's only necessary to use enough characters to uniquely
-identify the object. Care should be taken when using this feature in scripts.
-''';
-  
-  static const String expression_help = '''
-Expressions are entered in their natural form using parenthesis to indicate
-grouping. Operators allowed in expressions are:
-\t+\t-\t*\t/\t^\t<\t>\t=\t<>
-\tor\tand\tnot
-''';
-  
-  static const String methods_help = '''
-Methods are a means of accessing properties and stored routines of an
-object. They are tailored to meet the needs of each object.
-You create your own methods when you use Object to read a prototype
-and that prototype contains routines.
-There are also automatic methods available to access the value and text
-properties of any object which has them. That includes ones which you create
-with Object as well as the GUI objects, which keep GUI configuration in
-properties.n\
-To indicate a method, append the method name to the object with a period.
-This works when invoking the object for input at the beginning of the line,
-or using it with expansion by prefacing it with the dollar sign '\$'.
-See help on "quoting".
-'''; 
-   
   /*
    * end of standard object definitions  
    */
@@ -1874,5 +1912,11 @@ See help on "quoting".
     dictmap['compare'] = obj;
 
   }
-  
+  static Map helpindex = {
+    'accept':accept_help,'break':break_help,'call':call_help,'dup':dup_help,'echo':echo_help,
+    'else':else_help,'end':end_help,'help':help_help,'if':if_help,'list':list_help,
+    'object':object_help,'objectobject':objectobj_help,'text':text_help,'textobject':textobj_help,
+    'value':value_help,'valueobject':valueobj_help,'verbose':verbose_help,'while':while_help,
+    'general':general_help_help,'quoting':quoting_help_help,'naming':naming_help_help,
+    'expression':expression_help_help,'methods':methods_help_help};
 }

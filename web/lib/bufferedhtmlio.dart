@@ -1,7 +1,3 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
 /*
  *  Dart implemention of Mandy interpreter, console I/O
  *  using dart:io library
@@ -10,6 +6,9 @@ library bufferedhtmlio;
 import 'dart:collection';
 import 'dart:html';
 
+const   HOSTNAME = '127.0.0.1:8080';
+//const   HOSTNAME = 'domainofchildhood.com/bg1';
+
 class WebConsole {
             
   ButtonElement     _accept, _clear;
@@ -17,15 +16,17 @@ class WebConsole {
   TextAreaElement   _inputarea;
   var               _text;
   String            _input;
-  bool              inputready = false;
+  bool              inputready = false, echo = true;
+
   var               outputeventhandler, inputeventhandler;
 
-  void accepttext(Event e) {
+  void _accepttext(Event e) {
     String textarea;
-    if( _inputarea.value.length == 0 ) return;
+    if( _inputarea == null || _inputarea.value.length == 0 ) return;
     _input = '${_input}${_inputarea.value}\n';
     textarea = _inputarea.value.replaceAll('\n', '<br>');
-    _text.innerHtml = '${_text.innerHtml}${textarea}';
+    if( echo ) 
+      _text.innerHtml = '${_text.innerHtml}${textarea}';
     //_inputarea.value = '';
     inputready = true;
     if( inputeventhandler != null) inputeventhandler();
@@ -37,18 +38,21 @@ class WebConsole {
   
   void _listeninput(KeyboardEvent e) {
     if( e.keyCode == '\r'.codeUnits[0] ) 
-      acceptInput();
+      _acceptInput();
   }
     
-  void acceptInput() {
+  void _acceptInput() {
     if( _inputline.value.length == 0 ) return;
-    _text.innerHtml = '${_text.innerHtml}${_inputline.value}<br>';
+    if( echo ) 
+      _text.innerHtml = '${_text.innerHtml}${_inputline.value}<br>';
     _input = '${_input}${_inputline.value}';
     _inputline.value = '';
     inputready = true;
     if( inputeventhandler != null) inputeventhandler();
   }
- 
+
+  /* begin public methods */
+  
   WebConsole clear() {
     
     _text.innerHtml = '';
@@ -107,7 +111,7 @@ class WebConsole {
           }
           else {
             _accept = elem;
-            _accept.onClick.listen(accepttext);
+            _accept.onClick.listen(_accepttext);
           }
           break;      
       }      
@@ -122,9 +126,10 @@ class CharBuffer extends ListBase<int> {
   static const WARNING = 10, EOF = -1, WAIT = -2, ERROR  = -3;
   static final int newline = '\n'.codeUnits[0];
   
+  WebConsole  webcon;
   bool        allowinput = true, allowoutput = true;
   bool        restart = false, lastlinevalid = true;
-  WebConsole  webcon;
+  bool        echo = true;
   int         currentpos = 0;
   String      _lastline;
   
@@ -142,6 +147,8 @@ class CharBuffer extends ListBase<int> {
 
   int operator [](int index) => innerList[index];
 
+  /* input based functions */
+  
   int fetch() {
     
     // fetch one line of input and transfer to buffer

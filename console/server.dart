@@ -52,6 +52,10 @@ void handleGet(HttpRequest req) {
   String contenttype;
   if( path.contains('.html') )
     contenttype = "text/html";
+  else if( path.contains('.dart') )
+    contenttype = "application/dart";
+  else if( path.contains('.js') )
+    contenttype = "application/javascript";
   else if( path.contains('.json') )
     contenttype = "application/json";
   else if( path.contains('.css') )
@@ -78,6 +82,9 @@ void handleGet(HttpRequest req) {
  * Handle POST requests by overwriting the contents of data.json
  * Return the same set of data back to the client.
  */
+File    file;
+IOSink  ioSink; // save the data to the file
+
 void handlePost(HttpRequest req) {
   HttpResponse res = req.response;
   print("${req.method}: ${req.uri.path}");
@@ -85,18 +92,16 @@ void handlePost(HttpRequest req) {
   addCorsHeaders(res);
   // remove the leading '/'
   String path = req.uri.path.substring(1);
+  file = new File(path);
+  ioSink = file.openWrite(); // save the data to the file
   
   req.listen((List<int> buffer) {
-    var file = new File(path);
-    var ioSink = file.openWrite(); // save the data to the file
     ioSink.add(buffer);
-    ioSink.close();
-    
     // return the same results back to the client
     res.add(buffer);
     res.close();
   },
-  onError: printError);
+    onDone: () { ioSink.close(); }, onError: printError);
 }
 
 /**

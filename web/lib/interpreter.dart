@@ -1,11 +1,8 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
 library interpreter;
 
 import 'bufferedhtmlio.dart';
-import 'standardobjects.dart';
+
+part 'standardobjects.dart';
 
 /**********************
  * CLASS TokenLexer   *
@@ -356,8 +353,8 @@ class ObjectDictionary {
   
   static const MAXDICTDEPTH = 20;
   
-  int  _currentdepth;             // current dictionary depth depth
-  List<Map>               _dictmap;        // list of dictionary maps for each depth's
+  int         _currentdepth;             // current dictionary depth depth
+  List<Map>   _dictmap;        // list of dictionary maps for each depth's
   Map<String,ObjectEntry> _predefined;  // predefined objects list;
   CharBuffer  _logbuf;
   
@@ -450,6 +447,8 @@ class ObjectDictionary {
     
     ObjectEntry e, f;
     int n = _currentdepth;
+    // look for problem here    
+    //_logbuf.webcon.writeln('in clear: curdep=${n.toString()} dicmaplen=${_dictmap.length}');
     while( n > 0 ) {
       _dictmap[n--] = null;
       _dictmap.removeLast();

@@ -1,18 +1,5 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
-library gameboard;
+part of boardgameone;
 
-import 'gameengine.dart';
-import 'bufferedhtmlio.dart';
-import 'interpreter.dart';
-import 'designtools.dart';
-import 'dart:html';
-import 'dart:convert';
-
-const   HOSTNAME = '127.0.0.1:8080';
-//const   HOSTNAME = 'domainofchildhood.com';
 const   int BELOW = 1, ABOVE = 2, LEFT = 3, RIGHT = 4,
             FORWARD = 5, BACKWARD = 6, LEFTWARD = 7, RIGHTWARD = 8;
 final   directionkeymap = { 40:BELOW, 38:ABOVE, 37:LEFT, 39:RIGHT };
@@ -29,21 +16,28 @@ class GPlayer {
    * player is labeled as our point-of-view, but this can change
    */
   
+  static        int serialnum = 0;
+  
   Map<String,ObjectEntry> properties;
-  String        name, imagename;
+  String        name, serialname, imagename;
   ImageElement  image;
   bool          POV;
+  var           behavior;
+  KnowBase      knowledge;
   BoardSquare   location;
   List<Item>    possessions;
-  int           direction;
+  int           direction, sliceCount, sliceInit;
   
   GPlayer(this.name) {
     properties = new Map<String,ObjectEntry>();
     POV = false;
+    sliceCount = sliceInit = 0;
   }
   
   GPlayer duplicate() {
-    GPlayer p = new GPlayer(name);
+    GPlayer p = new GPlayer( name );
+    // create a serialized name as well
+    p.serialname = '${name}${(++serialnum).toString()}';
     // copy over only properties to be found in definition map
     p.imagename = imagename;
     p.POV = POV;
@@ -72,16 +66,18 @@ class Item {
    * Items are intities which are fixed and cannot move on their own,
    * although they can be allowed to be picked up, and then dropped.
    */
+  static int serialnum = 0;
   
   Map<String,ObjectEntry> properties;
-  String        name, imagename, description;
+  String        name, serialname, imagename, description;
 
   Item(this.name) {
     properties = new Map<String,ObjectEntry>();
   }
 
-  Item dup() {
-    Item i = new Item(name);
+  Item duplicate() {
+    Item i = new Item( name );
+    i.serialname = '${name}${(++serialnum).toString()}';
     i.imagename = imagename;
     i.description = description;
     i.properties.addAll(properties);
@@ -124,7 +120,9 @@ class Possessions {
     for( it in povPlayer.possessions ) {
       TableCellElement cell = _row.addCell();
       cell.style.padding = '4px';
-      cell.append( new ImageElement(src:'http://${HOSTNAME}/images/${it.imagename}.png'));
+      ImageElement elem = new ImageElement(src:'http://${HOSTNAME}/images/${it.imagename}.png');
+      //elem.height = elem.width = imageSize;
+      cell.append( elem );
       cell.onClick.listen(_click);
       cell.onMouseOver.listen(_mouseover);
     }
@@ -179,7 +177,7 @@ class BoardSquare {
   ImageElement  image;
   GPlayer       resident;
   List<Item>    contents;
-  String        description;
+  String        description, classname;
   
   bool  selected = false;
   int   x, y;
@@ -204,6 +202,7 @@ class BoardSquare {
       properties['imagename'] = board.engine.interpreter.stdobjs.textobject('imagename');
     properties['imagename'].data.buffer = buf;
     image = new ImageElement(src: 'http://${HOSTNAME}/images/${img}.png');
+    image.height = image.width = board.imageSize;
     _removeimage();
     tabelem.append(image);
   }
@@ -267,6 +266,7 @@ class GameBoard {
 
   int           _board_rows, _board_cols, _selectRow, _selectCol, _selectRowCnt, _selectColCnt;  
   int           activePlayersLength; // length of _activePlayer list before chaining
+  int           imageSize = 24;
   
   // these are division elements passed to us that we hang children HTML Elements on
   Element       _boardelement, _mouseover, _messages; 
@@ -278,10 +278,12 @@ class GameBoard {
   Map                     _cellMap, _scratchMap = new Map();
          
   Map<String,BoardSquare> bsMap;   // map of BoardSquare objects to location id
-  Map<String,String>      descMap; // location description map
+  Map<String,String>      descMap, // location description map
+                          narrMap; // location narrative path
   
   TableElement        _mainTable;
   List<BoardSquare>   _selected = new List<BoardSquare>();
+  List<String>        _revIndex;
   
   Map<String,ObjectEntry> properties;   // global board properties
   Map<String,GPlayer>     players;      // source definition of players on this board
@@ -310,6 +312,7 @@ class GameBoard {
     _board_cols = _cellMap['COLS'];
     // get location descriptions
     descMap = _cellMap['DESCRIPTIONS'];
+    narrMap = _cellMap['NARRATIVES'];
     
     if( _board_cols == null || _board_rows == null ) return null;
     for (var i = 0; i < _board_rows; i++) {
@@ -358,7 +361,7 @@ class GameBoard {
     TableRowElement tRow = tab.addRow();
     BoardSquare bs, firstbs, prevbs = null;
     Map cmap; String name; List<String> list;
-    String desc;
+    String desc; int indx;
     
     for (int colnum = 0; colnum < _board_cols; colnum++) {
       // create the boardsquare instance and set its row and col number,
@@ -383,8 +386,13 @@ class GameBoard {
       if( (list = cmap['CONTENTS']) != null ) {
         bs.contents = new List<Item>();
         for( name in list ) 
-          bs.contents.add( items[name].dup());
+          bs.contents.add( items[name].duplicate());
         cmap.remove('CONTENTS');
+      }
+      // fetch the image index and convert it
+      if( (indx = cmap['_II']) != null ) {
+        cmap['imagename'] = _revIndex[indx];
+        cmap.remove('_II');
       }
       // generate the board square properties and create table cell element
       bs.properties = genproperties( engine, cmap, true );
@@ -406,23 +414,30 @@ class GameBoard {
         prevbs.right = bs;
       bs.left = prevbs; // set our reference to square left
       prevbs = bs;      // update previous reference
+      // using the index and image name index find the name
       // using image name in properties if available, create an image element
       if( bs.properties['imagename'] != null) {
         String imagename = bs.properties['imagename'].data.buffer.string;
         bs.image = new ImageElement(src:
             'http://${HOSTNAME}/images/${imagename}.png');
+            
         // append image element to table element and set click listener
+        bs.image.height = bs.image.width = imageSize;
       } else {
         bs.image = new ImageElement(src:
             'http://${HOSTNAME}/images/landscape/grey.png');
         // append image element to table element and set click listener
+        bs.image.height = bs.image.width = imageSize;
       }
       bs.tabelem.append(bs.image); 
       bs.tabelem.onClick.listen(_click);
       bs.tabelem.onMouseOver.listen(_mouseover_handler);
-      // load the description if available
+      // make some direct properties of boardsquare
+      // like description and class if available
       if( (desc = cmap['desc']) != null )
         bs.description = desc;
+      if( (desc = cmap['class']) != null )
+        bs.classname = desc;
     }
     return firstbs; // return the first square in this new row
   }
@@ -436,12 +451,18 @@ class GameBoard {
     if( engine.running ) {
       String desc;
        // put up the description property
-      if( bs.description != null )
+      if( bs.description != null ) {
         if( descMap != null && (desc = descMap[bs.description]) != null )
           _mouseover.text = desc;
         else _mouseover.text = bs.description;
-      else _mouseover.text = '';
-      engine.narrativeName = bs.description;
+        if( narrMap != null && (desc = narrMap[bs.description]) != null )
+          engine.narrativeName = desc;
+        else engine.narrativeName = null;
+      }
+      else { 
+        _mouseover.text = ''; 
+        engine.narrativeName = null;
+      }
       return;
     }
  
@@ -525,7 +546,7 @@ class GameBoard {
         }
         
       }
-      engine.move( dir, false, povp );
+      engine.move( dir, false, null, povp );
       return;
     }    
     // not running, select the cell. First look for cell already selected
@@ -606,7 +627,8 @@ class GameBoard {
   }
   
   void pasteBoard() {
-    // replace the current board with data from scratch area
+    // replace the current board squares with squares from scratch area
+    // paste the new squares using the select square as top left
     int numrows = _scratchMap['ROWS'];  
     int numcols = _scratchMap['COLS'];
     int row, urow = 0;
@@ -630,17 +652,19 @@ class GameBoard {
          bs.image = new ImageElement(src:
              'http://${HOSTNAME}/images/${imagename}.png');
          // append image element to table element and set click listener
+         bs.image.height = bs.image.width = imageSize;
        } else {
          bs.image = new ImageElement(src:
              'http://${HOSTNAME}/images/landscape/grey.png');
          // append image element to table element and set click listener
+         bs.image.height = bs.image.width = imageSize;
        }
        bs.tabelem.append(bs.image);
     }
   }
   
   void copyPlayers() {
-    // copy the player data to scratch area
+    // copy the current player data to scratch area
     //
     // generate JSON maps for players while at the same time
     // create a list of the player names
@@ -655,7 +679,9 @@ class GameBoard {
       _scratchMap[(nam = names.elementAt(n))] = m;
       playerlist.add(nam);
     }        
-    // update the player and item list in _cellMap
+    // update the player list in _cellMap
+    List l = _scratchMap['PLAYERS'];
+    if( l != null ) playerlist.addAll(l);
     _scratchMap['PLAYERS']= playerlist;
   }
   
@@ -694,6 +720,7 @@ class GameBoard {
       itemlist.add(nam);
     }
     // update the player and item list in _cellMap
+    itemlist.addAll(_scratchMap['ITEMS']);
     _scratchMap['ITEMS'] = itemlist;
   }
   
@@ -768,6 +795,7 @@ class GameBoard {
           newbs.image = new ImageElement(src:
               'http://${HOSTNAME}/images/landscape/grey.png');
           // append image element to table element and set click listener
+          newbs.image.height = bs.image.width = imageSize;
           newbs.tabelem.append(newbs.image); 
           newbs.tabelem.onClick.listen(_click);
           newbs.tabelem.onMouseOver.listen(_mouseover_handler);
@@ -853,26 +881,30 @@ class GameBoard {
     remove();   // remove any previous table of ours
     // decode the JSON encoded cell map for entire board
     _cellMap = JSON.decode(jstr);
+    
     // fetch the players and items lists from the _cellmap
     // and create the players and items maps
     players = new Map<String,GPlayer>();
-    items = new Map<String,Item>();
     List<String> names = _cellMap['PLAYERS'];
     String nam; GPlayer pobject; Item iobject; ObjectEntry e;
     if( names != null ) {
       for( nam in names ) {
         pobject = new GPlayer(nam);
         pobject.properties = genproperties( engine, _cellMap[nam], false );
+        // create a direct property for imagename
         if( (e = pobject.properties['imagename']) != null )
           pobject.imagename = e.data.buffer.string;
         players[nam] = pobject;
       }
     }
+    // now the same for items
+    items = new Map<String,Item>();
     names = _cellMap['ITEMS'];    
     if( names != null ) {
       for( nam in names ) {
         iobject = new Item(nam);
         iobject.properties = genproperties( engine, _cellMap[nam], false );
+        // create a direct property for imagename and desc
         if( (e = iobject.properties['imagename']) != null )
           iobject.imagename = e.data.buffer.string;
         if( (e = iobject.properties['desc']) != null ) {
@@ -881,6 +913,10 @@ class GameBoard {
         items[nam] = iobject;
       }
     }
+    // load the image index array as it is
+    _revIndex = _cellMap['IMAGES'];
+    // and then remove it from the _cellMap. We only need this to load the board
+    _cellMap.remove('IMAGES');
     // create a blank bsMap
     bsMap = new Map();
     // populate the gameboard with squares based on _cellMap details
@@ -930,7 +966,10 @@ class GameBoard {
   
   GameBoard saveMap(String map) {
     // save the board game to the server with a Html POST request
-    int n; Map m; String nam; BoardSquare bs; 
+    int n; Map m; String nam; BoardSquare bs;
+    Map<String,int> imgnammap = new Map();
+    int             imgnamidx = 0;
+    List<String>    revIndex = new List();
     Iterable<String> names;
     HttpRequest req;
     if( !engine.uselocal ) {
@@ -938,9 +977,9 @@ class GameBoard {
       req.onReadyStateChange.listen((ProgressEvent e) {
         if (req.readyState == HttpRequest.DONE &&
             (req.status == 200 || req.status == 0))
-          _messages.text = 'board map post success';
+          _messages.text = '${_messages.text} board map post success';
         else 
-          _messages.text = 'board map post failure: ${e.toString()}';
+          _messages.text = '${_messages.text} board map post failure: ${e.toString()}';
       });
     }
     // generate the engine properties and put in _cellMap 
@@ -972,10 +1011,21 @@ class GameBoard {
     // to update the _cellMap entry for each board square
     // with current values from the boardsquare's properties map 
     names  = bsMap.keys;
+    String s; int indx;
     Iterable<BoardSquare> sqrobjects  = bsMap.values;
     for( n = 0; n < bsMap.length; n++ ) {
       // gen a map from square's properties
       m = gencmap( (bs = sqrobjects.elementAt(n)).properties );
+      // convert image name to index
+      if( (s = m['imagename']) != null ) {
+        indx = imgnammap[s];
+        if( indx == null ) {
+          indx = imgnammap[s] = imgnamidx++;
+          revIndex.add(s);
+        }
+        m['_II'] = indx; 
+        m.remove('imagename');        
+      }
       // add entries for any resident and contents
       if( bs.resident != null ) m['RESIDENT'] = bs.resident.name;
       if( bs.contents != null ) {
@@ -986,12 +1036,15 @@ class GameBoard {
       _cellMap[names.elementAt(n)] = m;
     }
     
+    if( imgnammap.length > 0 ) _cellMap['IMAGES'] = revIndex;
     if( engine.uselocal )
       engine.maparea.value = JSON.encode(_cellMap);
     else {
       // open up the http channel and send an JSON encoded _cellMap using map name
       req.open('POST', 'http://${HOSTNAME}/data/${map}.json', async:false);
-      req.send( JSON.encode(_cellMap));
+      String  sendstr = JSON.encode(_cellMap);
+      messages.text = "sendstr length = ${sendstr.length}";
+      req.send( sendstr);
     }
     return this;
   }

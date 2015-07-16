@@ -1,8 +1,4 @@
-<!/*************************
-   *  BoardGameOne files   *
-   *  (c) John Derry 2015  *
-   *************************/>
-<!DOCTYPE html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 
 <html>
   <head>
@@ -11,32 +7,31 @@
     <link rel="stylesheet" href="mandy.css">
   </head>
   <body>
-    <table border="1"><tbody>
-    <tr style="background:lightblue">
-      <td>
+    <div id="controlDiv">
         <button id="clearobjects">ClearObjects</button>
         Verbosity<input id="verbosity" type="text" size="4">
         <button id="incrverb">+</button><button id="decrverb">-</button><br>
+        Name<input id="loadname" type="text">
         <button id="load">Load</button><button id="save">Save</button>
-        Name<input id="loadname" type="text"><br> 
-      </td>
-      <td>FileSysLog<textarea id="websyslog"></textarea></td>
-    </tr>
-    <tr>
-      <td>
+      FileSysLog<textarea id="websyslog"></textarea>
+    </div>
+    <div id="sourceDiv">
         Source<button id="clear" class="source">Clear</button>
           <button id="accept" class="source">Accept</button><br>
           <textarea class="source" id="sourcetext" rows="20" cols="48"></textarea><br>
           <input type="text" size="60" class="source">
-          <div style="overflow:auto" class="source"></div><br>
-      </td>
-      <td>
+          <div style="overflow:auto" class="source"></div>
+    </div>
+    <div id="consoleDiv">
         Console<button id="clear" class="console">Clear</button><br>
           <input type="text" size="60" class="console">
           <div style="overflow:auto" class="console"></div>
-      </td>
-    </tr>
-    </tbody></table>
+    </div>
+        <select id="helpRoot"></select><select id="helpSelect"></select> 
+        <input type="text" size="30" class="helpdiv">
+        <button id="clear" class="helpdiv">Clear</button>
+        <div class="helpdiv"></div>
+  
     <script type="application/dart" src="mandy.dart"></script>
     <script src="packages/browser/dart.js"></script>
   </body>

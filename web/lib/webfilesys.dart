@@ -1,7 +1,3 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
 library webfilesys;
 import 'dart:html';
 

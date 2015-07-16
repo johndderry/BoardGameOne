@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Create and Edit Knowledge</title>
+    <link rel="stylesheet" href="know.css">   
+  </head>
+  <body>
+    Base Name<input type="text" id="knowledgename" value="default" size="30">
+    Count<input type="text" id="basecount" size="10">
+    <button id='load'>Load</button>
+    <button id='save'>Save</button><br><br>  
+      
+    <div id="queryDiv">Query
+    <input type="text" size="80" class="query">
+    <button id="clear" class="query">Clear</button><br>
+    Count<input type="text" id="querycount" size="10">
+    DelPos<input type="text" id="deletepos" size="10">
+    <button id="delete">Delete</button>
+    <div class="query"></div>
+    </div>
+    
+    <div id="addDiv">Additions
+    <input type="text" size="80" class="additions">
+    <button id="clear" class="additions">Clear</button><br>
+    Verbose<input type="checkbox" id="verbose">
+    Count<input type="text" id="addcount" size="10">
+    <div class="additions"></div>
+    </div>
+    
+    <button id='show'>Show Collection</button>
+    <button id='showbase'>Show Base</button>
+    <button id='update'>Update Base</button>
+    <script type="application/dart" src="know.dart"></script>
+    <script src="../packages/browser/dart.js"></script>
+  </body>
+</html>

@@ -11,8 +11,9 @@ h1, p {
   color: #333;
 }
 
-*.peditor * {
-  background-color: white;  
+div.peditor {
+  background-color: yellow;  
+  
 }
 
 img {

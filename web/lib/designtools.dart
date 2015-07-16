@@ -1,50 +1,69 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
-library designtools;
+part of boardgameone;
 
-import 'dart:html';
-import 'dart:convert';
-import 'bufferedhtmlio.dart';
-import 'interpreter.dart';
-import 'gameboard.dart';
-import 'gameengine.dart';
+class HelpIndex{
+  String name;
+  Map<String,String> map;
+  HelpIndex     next;
+}
 
 class ToolBox {
   /*
    * GameBoard Editor
    * Handle all functions (except creating, loading saving boards)
-   * related to midifying game board. Create instance of propery editor.
+   * related to modifying game board. Create instance of propery editor.
    */
   static const IMAGEROWCNT = 38;
 
   ButtonElement     updateProp, boardProps, dropPlayer, dropItem, copyBoard, pasteBoard,
     playerCreate, playerDelete, playerEdit, playerPlace, 
     itemCreate, itemDelete, itemEdit, itemPlace, copyPlayers, pastePlayers, copyItems, pasteItems, 
-    reloadImages, clearScratch;
+    loadImages, clearImages, clearScratch;
   TextInputElement  mapName, rowsNum, colsNum, propValue, playerName, itemName, imageRowCnt;
   CheckboxInputElement rangeCB, multiCB;
-  SelectElement     propSelect, playerSelect, itemSelect, imageDirSelect;
+  SelectElement     propSelect, playerSelect, itemSelect, imageDirSelect, helpRoot, helpSelect;
 
   GameEngine      engine;
-  Element         toolbox, _messages;
+  Element         _messages, _images;
   TableElement    _table;
   TableRowElement _tRow;
   List<String>    _imageList, _imageDirList;
   int             _imagerowcnt, _rowcnt;
   
   PropEditor    peditor;
-  
-  ToolBox(this.engine, this.toolbox, this._messages ) {
+  WebConsole    helpconsole;
+  CharBuffer    conbuf;
+  HelpIndex     helproot, helpindex;
+   
+  void helpconsoleevent() {
+    // fetch the input and then clear it out after looking up help
+    String answer;
+    conbuf.fetch();
+    answer = StandardObjects.helpindex[conbuf.string.trimRight()];
+    if( answer == null )
+      answer = GameEngine.helpindex[conbuf.string.trimRight()];  
+    conbuf.webcon.clear();  // throws out last response
+    conbuf.clear();         // throws out leftover input
+    if( answer == null )
+      conbuf.addAll('No help available<br>'.codeUnits);
+    else   
+      conbuf.addAll('${answer}<br>'.codeUnits);
+    conbuf.deliver();
+      
+    }
+
+  ToolBox(this.engine, this._images, this._messages ) {
 
     peditor = new PropEditor( querySelector("#propedit"), _messages );
+    helpconsole = new WebConsole(document, '.helpdiv');
+    helpconsole.echo = false;
+    conbuf    = new CharBuffer( helpconsole );
+    helpconsole.inputeventhandler = helpconsoleevent;
     
     // associate the peditor with gameboard so that
     // square properties can be edit by the second click  
     peditor.engine = engine;
     engine.board.peditor = peditor;
-
+    
     // get access to HTML elements on editor page
     multiCB = querySelector("#multi");
     rangeCB = querySelector("#range");
@@ -74,8 +93,11 @@ class ToolBox {
     itemSelect = querySelector("#itemSelect");
     itemName = querySelector("#itemName");
     imageRowCnt = querySelector("#imageRowCnt");
-    reloadImages = querySelector("#reloadImages");
+    loadImages = querySelector("#loadImages");
+    clearImages = querySelector("#clearImages");
     imageDirSelect = querySelector("#imageDir");
+    helpRoot = querySelector("#helpRoot");
+    helpSelect = querySelector("#helpSelect");
 
     multiCB.onClick.listen(buttonpress);
     rangeCB.onClick.listen(buttonpress);
@@ -97,8 +119,37 @@ class ToolBox {
     pastePlayers.onClick.listen(buttonpress);
     copyItems.onClick.listen(buttonpress);
     pasteItems.onClick.listen(buttonpress);
-    reloadImages.onClick.listen(buttonpress);
+    loadImages.onClick.listen(buttonpress);
+    clearImages.onClick.listen(buttonpress);
+    helpRoot.onClick.listen(buttonpress);    
+    helpSelect.onClick.listen(buttonpress);    
+    //imageDirSelect.onClick.listen(buttonpress);
+
+    // create the map of help items
+    String name; 
     
+    helproot = helpindex = new HelpIndex();
+    helpindex.name = 'script standard objects';
+    helpindex.map = StandardObjects.helpindex; 
+    addPDOption( helpRoot, helpindex.name );
+   
+    helpindex.next = new HelpIndex();
+    helpindex = helpindex.next;
+    helpindex.name = 'script game objects';
+    helpindex.map = GameEngine.helpindex; 
+    addPDOption( helpRoot, helpindex.name );
+
+    helpindex.next = new HelpIndex();
+    helpindex = helpindex.next;
+    helpindex.name = 'game design help';
+    helpindex.map = DesignHelp.helpindex; 
+    addPDOption( helpRoot, helpindex.name );
+    
+    Iterator keys_iter = helproot.map.keys.iterator;
+    while( keys_iter.moveNext() ) {
+      addPDOption( helpSelect, keys_iter.current );
+    }
+
     // create table to load available images
     _table = new TableElement();
     // _table.attributes['border'] = '1';
@@ -139,7 +190,7 @@ class ToolBox {
     // fetch each each image referenced
     _imagerowcnt = 0;
     _imageList.forEach((image)=>_addImageCell(image));
-    toolbox.append(_table);
+    _images.append(_table);
   }
 
   void _addImageCell(String image) {
@@ -179,10 +230,10 @@ class ToolBox {
     _messages.text = '${_messages.text}designtools:${e.toString()}';
   }
   
-  void addGPlayerOption(String name) {
+  void addPDOption(SelectElement select, String name) {
     OptionElement option = new OptionElement();
     option.value = option.text = name;
-    playerSelect.append(option);
+    select.append(option);
   }
   
   void delGPlayerOption(String name) {
@@ -193,12 +244,6 @@ class ToolBox {
         break;
       }
     }
-  }
-  
-  void addItemOption(String name) {
-    OptionElement option = new OptionElement();
-    option.value = option.text = name;
-    itemSelect.append(option);
   }
   
   void delItemOption(String name) {
@@ -213,12 +258,16 @@ class ToolBox {
   
   void buttonpress(Event e) {
 
-    if( e.currentTarget == clearScratch ) 
+    if( e.currentTarget == clearScratch )
       engine.board.clearScratch();
-    else if( e.currentTarget == reloadImages ) {
-      // create fresh table to load available images
+    
+    else if( e.currentTarget == clearImages ) {
+      // clear the image table
       _table.remove();
       _table = new TableElement();
+    }
+    else if( e.currentTarget == loadImages || e.currentTarget == imageDirSelect  ) {
+        // load the image table with new available images
       // _table.attributes['border'] = '1';
       _tRow = _table.addRow();
       // establish rowcnt from text area or default
@@ -268,7 +317,7 @@ class ToolBox {
           // create select option, load engine.board.players with instance
           GPlayer player = new GPlayer(playerName.value);
           engine.board.players[playerName.value]= player;
-          addGPlayerOption(playerName.value);
+          addPDOption(playerSelect, playerName.value);
         }
     }
     else if( e.currentTarget == playerDelete ) {
@@ -298,7 +347,7 @@ class ToolBox {
           // create select option, load engine.board.items with instance
           Item item = new Item(itemName.value);
           engine.board.items[itemName.value]= item;
-          addItemOption(itemName.value);
+          addPDOption(itemSelect, itemName.value);
         }
     }
     else if( e.currentTarget == itemDelete ) {
@@ -323,6 +372,30 @@ class ToolBox {
       engine.board.pasteItems();
       loadItemOptions();
     }
+    else if( e.currentTarget == helpRoot ) {
+      // get the right helpindex in place
+      List<OptionElement> opt = helpRoot.selectedOptions;
+      int indx = opt[0].index;
+      helpindex = helproot;
+      while( indx-- > 0 && helpindex.next != null ) 
+        helpindex = helpindex.next; 
+      // reload the options for display
+      Node e;
+      // clear old list and any help first
+      while( (e = helpSelect.firstChild) != null ) e.remove();
+      helpconsole.clear();
+      // load new list
+      Iterator keys_iter = helpindex.map.keys.iterator;
+      while( keys_iter.moveNext() ) {
+        addPDOption( helpSelect, keys_iter.current );
+      }
+    }
+    else if( e.currentTarget == helpSelect ) {
+      List<OptionElement> opt = helpSelect.selectedOptions;
+      String answ = helpindex.map[opt[0].innerHtml]; 
+      helpconsole.clear();
+      helpconsole.writeln(answ);
+    }
   }
   
   void reset() {
@@ -343,7 +416,8 @@ class ToolBox {
     Iterable<String> names;
     names = engine.board.players.keys;
     for( nam in names )
-      addGPlayerOption( nam );
+      addPDOption( playerSelect, nam );
+      //addGPlayerOption( nam );
   }
   
   void loadItemOptions() {
@@ -355,7 +429,7 @@ class ToolBox {
     Iterable<String> names;
     names = engine.board.items.keys;
     for( nam in names )
-      addItemOption( nam );   
+      addPDOption( itemSelect, nam );   
   }
 
   void loadOptions() {
@@ -369,7 +443,7 @@ class PropEditor {
   
   /*
    * Properties Editor. Generalized to edit properties of
-   * gameboard, players, obstacles
+   * gameboard, players, items
    */
   GameEngine        engine;
   Element           propertyeditor, _messages;
@@ -419,26 +493,30 @@ class PropEditor {
     propertyeditor.append(addprop);
     propertyeditor.append(newpropname);
     
+    bool nobreakyet = true;
     // set up an action textarea if necessary
     if( (obj=bsprops['action']) != null ) {
       action = new TextAreaElement();
       action.cols = 40; action.rows = 20;
       action.value = obj.data.buffer.string;
-      propertyeditor.appendHtml('<br>Action');
+      if( nobreakyet ) { nobreakyet = false; propertyeditor.appendHtml('<br>Action'); }
+      else propertyeditor.appendHtml('Action');
       propertyeditor.append(action);
     }
     if( (obj=bsprops['enteraction']) != null ) {
       enteraction = new TextAreaElement();
       enteraction.cols = 40; enteraction.rows = 20;
       enteraction.value = obj.data.buffer.string;
-      propertyeditor.appendHtml('<br>EnterAction');
+      if( nobreakyet ) { nobreakyet = false; propertyeditor.appendHtml('<br>EnterAction'); }
+      else propertyeditor.appendHtml('EnterAction');
       propertyeditor.append(enteraction);
     }
     if( (obj=bsprops['leaveaction']) != null ) {
       leaveaction = new TextAreaElement();
       leaveaction.cols = 40; leaveaction.rows = 20;
       leaveaction.value = obj.data.buffer.string;
-      propertyeditor.appendHtml('<br>LeaveAction');
+      if( nobreakyet ) { nobreakyet = false; propertyeditor.appendHtml('<br>LeaveAction'); }
+      else propertyeditor.appendHtml('LeaveAction');
       propertyeditor.append(leaveaction);
     }
   }
@@ -577,3 +655,4 @@ class PropEditor {
     bsprops[key].data.buffer = buf;
   }
 }
+

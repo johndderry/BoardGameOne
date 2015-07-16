@@ -1,22 +1,17 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
 import 'dart:html';
-import '../lib/divpager.dart';
-import '../lib/designtools.dart';
+import '../lib/gameengine.dart';
 
 DivPager      pager;
 ToolBox       tools;
 
 ButtonElement     loadMap, saveMap, useLocal, useWeb, loadScr, saveScr,
                   addRow, addCol, createNew, swapMain, run, singlestep, step, stop;
-TextInputElement  mapName, rowsNum, colsNum;
+TextInputElement  mapName, rowsNum, colsNum, imageSize;
 
 void main() {
   
   pager   = new DivPager(querySelector("#mainArea"), '.source', '.console');
-  tools   = new ToolBox(pager.engine, querySelector("#toolbox"), pager.messagesDiv );
+  tools   = new ToolBox(pager.engine, querySelector("#images"), pager.messagesDiv );
   pager.engine.board.boardclass = 'editboard';
   pager.boardloadcallback = tools.loadOptions;
   
@@ -37,6 +32,7 @@ void main() {
   mapName = querySelector("#mapName");
   rowsNum = querySelector("#rows");
   colsNum = querySelector("#cols");
+  imageSize = querySelector("#imageSize");
   
   loadMap.onClick.listen(buttonpress);
   saveMap.onClick.listen(buttonpress);
@@ -52,10 +48,14 @@ void main() {
   singlestep.onClick.listen(buttonpress);
   step.onClick.listen(buttonpress);
   stop.onClick.listen(buttonpress);
+  //imageSize.onClick.listen(buttonpress);
 }
 
 void buttonpress(Event e) {
   
+  // just update this everytime
+  pager.engine.board.imageSize = int.parse(imageSize.value);
+
   if( e.currentTarget == loadMap )
     pager.engine.board.loadMap(mapName.value);
   else if( e.currentTarget == saveMap )
@@ -93,6 +93,8 @@ void buttonpress(Event e) {
     pager.engine.board.adjust(1,0);
   else if( e.currentTarget == addCol )
     pager.engine.board.adjust(0,1);
+  //else if( e.currentTarget == imageSize )
+  //  pager.engine.board.imageSize = int.parse(imageSize.value);
   else if( e.currentTarget == createNew ) {
     tools.reset();  // clear any player / item selection options
     pager.engine.board.create(rowsNum.value, colsNum.value);

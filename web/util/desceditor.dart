@@ -1,21 +1,17 @@
-/**************************
-  *  BoardGameOne files   *
-  *  (c) John Derry 2015  *
- **************************/
 import 'dart:html';
 import 'dart:convert';
 
 const  HOSTNAME  = 'localhost:8080';
-//const  HOSTNAME  = 'domainofchildhood.com';
+//const  HOSTNAME  = 'domainofchildhood.com/bg1';
 
 ButtonElement     loadMap, saveMap, list, lookup, update, clear;
-TextInputElement  mapName, descName;
-TextAreaElement   desc;
+TextInputElement  mapName, descName, pathName;
+TextAreaElement   descTextArea;
 SelectElement     descSelectList; 
 Element           messages;
 
 Map                 gamemap;
-Map<String,String>  descmap;
+Map<String,String>  descmap, narrmap;
 
 void main() {
   
@@ -28,7 +24,8 @@ void main() {
   clear = querySelector("#clear");
   mapName = querySelector("#mapName");
   descName = querySelector("#descName");
-  desc = querySelector("#desc");
+  descTextArea = querySelector("#desc");
+  pathName = querySelector("#path");
   messages = querySelector("#messages");
   
   loadMap.onClick.listen(buttonpress);
@@ -49,6 +46,8 @@ void _load(String map) {
   gamemap = JSON.decode(map);
   if( (descmap = gamemap['DESCRIPTIONS']) == null )
     descmap = new Map<String,String>();
+  if( (narrmap = gamemap['NARRATIVES']) == null )
+    narrmap = new Map<String,String>();
   messages.text = 'Map Loaded';
 }
 
@@ -75,6 +74,7 @@ void buttonpress(Event e) {
         messages.text = 'map post failure: ${e.toString()}';
     });
     gamemap['DESCRIPTIONS'] = descmap;
+    gamemap['NARRATIVES'] = narrmap;
     req.open('POST', 'http://${HOSTNAME}/data/${mapName.value}.json', async:false);
     req.send( JSON.encode(gamemap));
     messages.text = 'Map Saved';
@@ -94,16 +94,23 @@ void buttonpress(Event e) {
     if( descSelectList.selectedIndex >= 0 )
       descName.value = descmap.keys.elementAt(descSelectList.selectedIndex);
     if( (s = descmap[descName.value]) != null )
-      desc.value = s;
+      descTextArea.value = s;
     else
-      desc.value = '';
+      descTextArea.value = '';
+    if( (s = narrmap[descName.value]) != null )
+      pathName.value = s;
+    else
+      pathName.value = '';
   }
   else if( e.currentTarget == update ) {
-    if( descName.value.length > 0 && desc.value.length > 0 )
-      descmap[descName.value]= desc.value; 
+    if( descName.value.length > 0 && descTextArea.value.length > 0 ) {
+      descmap[descName.value]= descTextArea.value; 
+      narrmap[descName.value]= pathName.value; 
+    }
   }
   else if( e.currentTarget == clear ) {
-    desc.value = '';
+    descTextArea.value = '';
+    pathName.value = '';
   }
 }
 
