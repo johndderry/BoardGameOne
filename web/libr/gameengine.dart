@@ -1,3 +1,7 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 library boardgameone;
 
 import 'dart:html';

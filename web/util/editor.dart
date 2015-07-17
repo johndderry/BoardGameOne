@@ -1,5 +1,5 @@
 import 'dart:html';
-import '../lib/gameengine.dart';
+import '../libr/gameengine.dart';
 
 DivPager      pager;
 ToolBox       tools;

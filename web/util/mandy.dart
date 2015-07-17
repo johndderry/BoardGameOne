@@ -1,7 +1,7 @@
 import 'dart:html';
-import '../lib/interpreter.dart';
-import '../lib/webfilesys.dart';
-import '../lib/bufferedhtmlio.dart';
+import '../libr/interpreter.dart';
+import '../libr/webfilesys.dart';
+import '../libr/bufferedhtmlio.dart';
    
 ButtonElement clearobjects, load, save, 
   clearconsole, clearsource, incrverb, decrverb;

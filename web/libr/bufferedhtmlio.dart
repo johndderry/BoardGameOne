@@ -1,13 +1,24 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 /*
  *  Dart implemention of Mandy interpreter, console I/O
  *  using dart:io library
  */
+
 library bufferedhtmlio;
 import 'dart:collection';
 import 'dart:html';
 
-const   HOSTNAME = '127.0.0.1:8080';
-//const   HOSTNAME = 'domainofchildhood.com/bg1';
+/*
+ * Everybody reads this from here
+ */
+
+const HOSTNAME = "127.0.0.1:8080";
+
+/* 
+ */
 
 class WebConsole {
             

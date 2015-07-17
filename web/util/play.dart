@@ -1,5 +1,9 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 import 'dart:html';
-import '../lib/gameengine.dart';
+import '../libr/gameengine.dart';
 
 DivPager          pager;
 ButtonElement     loadMap, swapMain;

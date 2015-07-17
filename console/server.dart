@@ -53,7 +53,7 @@ void handleGet(HttpRequest req) {
   if( path.contains('.html') )
     contenttype = "text/html";
   else if( path.contains('.dart') )
-    contenttype = "application/dart";
+    contenttype = "application/javascript";
   else if( path.contains('.js') )
     contenttype = "application/javascript";
   else if( path.contains('.json') )

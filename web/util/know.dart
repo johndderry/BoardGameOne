@@ -1,5 +1,5 @@
 import 'dart:html';
-import '../lib/bufferedhtmlio.dart';
+import '../libr/bufferedhtmlio.dart';
 import '../parser/parser.dart';
 
 WebConsole    queryCon, additionCon;

@@ -1,8 +1,11 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 import 'dart:html';
 import 'dart:convert';
 
 const  HOSTNAME  = 'localhost:8080';
-//const  HOSTNAME  = 'domainofchildhood.com/bg1';
 
 ButtonElement     loadMap, saveMap, list, lookup, update, clear;
 TextInputElement  mapName, descName, pathName;

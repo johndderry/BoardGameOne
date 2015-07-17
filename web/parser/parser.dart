@@ -1,8 +1,12 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 library NLPparser;
 
 import 'dart:html';
 import 'dart:convert';
-import '../lib/bufferedhtmlio.dart';
+import '../libr/bufferedhtmlio.dart';
 
 part 'english_definition.dart';
 part 'knowledge.dart';
