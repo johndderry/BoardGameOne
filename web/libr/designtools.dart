@@ -1,5 +1,7 @@
 part of boardgameone;
 
+// consider breaking up designtools
+
 class HelpIndex{
   String name;
   Map<String,String> map;
@@ -8,11 +10,12 @@ class HelpIndex{
 
 class ToolBox {
   /*
-   * GameBoard Editor
-   * Handle all functions (except creating, loading saving boards)
-   * related to modifying game board. Create instance of propery editor.
+   * GameBoard Editor's Toolbox
+   * Everything is pretty much lumped in here that is used for edititing. 
+   * The element tags id's are established in the editor.html, otherwise it's here. 
+   * From this code we also create an instances of the propery editor that we use.
    */
-  static const IMAGEROWCNT = 38;
+  static const IMAGEROWCNT = 37;    // This is wildly dependent on other things
 
   ButtonElement     updateProp, boardProps, dropPlayer, dropItem, copyBoard, pasteBoard,
     playerCreate, playerDelete, playerEdit, playerPlace, 
@@ -21,6 +24,7 @@ class ToolBox {
   TextInputElement  mapName, rowsNum, colsNum, propValue, playerName, itemName, imageRowCnt;
   CheckboxInputElement rangeCB, multiCB;
   SelectElement     propSelect, playerSelect, itemSelect, imageDirSelect, helpRoot, helpSelect;
+  DivElement        playerImgList, itemImgList;
 
   GameEngine      engine;
   Element         _messages, _images;
@@ -34,6 +38,9 @@ class ToolBox {
   CharBuffer    conbuf;
   HelpIndex     helproot, helpindex;
    
+  /* The toolbox has a help console at the bottom. This is the event handler
+     used when some action is required
+  */
   void helpconsoleevent() {
     // fetch the input and then clear it out after looking up help
     String answer;
@@ -49,8 +56,9 @@ class ToolBox {
       conbuf.addAll('${answer}<br>'.codeUnits);
     conbuf.deliver();
       
-    }
+  }
 
+  /* CONSTRUCTOR */ 
   ToolBox(this.engine, this._images, this._messages ) {
 
     peditor = new PropEditor( querySelector("#propedit"), _messages );
@@ -59,12 +67,13 @@ class ToolBox {
     conbuf    = new CharBuffer( helpconsole );
     helpconsole.inputeventhandler = helpconsoleevent;
     
-    // associate the peditor with gameboard so that
+    // associate the property editor with gameboard so that
     // square properties can be edit by the second click  
     peditor.engine = engine;
     engine.board.peditor = peditor;
     
-    // get access to HTML elements on editor page
+    // get access to HTML elements defined on editor.html page
+    // BUTTONS & CHECKBOXES
     multiCB = querySelector("#multi");
     rangeCB = querySelector("#range");
     updateProp = querySelector("#updateProp");
@@ -85,7 +94,7 @@ class ToolBox {
     pastePlayers = querySelector("#pastePlayers");
     copyItems = querySelector("#copyItems");
     pasteItems = querySelector("#pasteItems");
-
+    // INPUT & SELECT
     propValue = querySelector("#propValue");
     propSelect = querySelector("#propSelect");
     playerSelect = querySelector("#playerSelect");
@@ -98,7 +107,11 @@ class ToolBox {
     imageDirSelect = querySelector("#imageDir");
     helpRoot = querySelector("#helpRoot");
     helpSelect = querySelector("#helpSelect");
-
+    // Special Divisions
+    playerImgList = querySelector("#playerlist");
+    itemImgList = querySelector("#itemlist");
+    
+    // attach listeners
     multiCB.onClick.listen(buttonpress);
     rangeCB.onClick.listen(buttonpress);
     updateProp.onClick.listen(buttonpress);
@@ -125,8 +138,9 @@ class ToolBox {
     helpSelect.onClick.listen(buttonpress);    
     //imageDirSelect.onClick.listen(buttonpress);
 
-    // create the map of help items
-    String name; 
+    /*
+     * Setup the stuff that help console needs
+     */
     
     helproot = helpindex = new HelpIndex();
     helpindex.name = 'script standard objects';
@@ -150,6 +164,11 @@ class ToolBox {
       addPDOption( helpSelect, keys_iter.current );
     }
 
+    /*
+     * set up and request loading the area 
+     * where the images will be show for selection
+     */
+     
     // create table to load available images
     _table = new TableElement();
     // _table.attributes['border'] = '1';
@@ -162,7 +181,9 @@ class ToolBox {
     // and stuff the image directory list in imageDir select
     HttpRequest.getString('http://${HOSTNAME}/data/images.json')
       .then(_load_index).catchError(_handleError);
+      
   }
+  // END CONSTRUCTOR
   
   int formaterror(String s) {
     _messages.text = 'number format error in "${s}"';
@@ -405,31 +426,59 @@ class ToolBox {
       child.remove();
     while( (child = itemSelect.lastChild) != null ) 
       child.remove();
+    if( (child = playerImgList.lastChild) != null ) 
+      child.remove();
+    if( (child = itemImgList.lastChild) != null ) 
+      child.remove();
   }
   
   void loadPlayerOptions() {
-    // load the player select list options
+    // load the player select list options from engine.players
+    // and set up the playerList Division
     Node child;
+    // clear the old list
     while( (child = playerSelect.lastChild) != null ) 
       child.remove();
-    String nam;
-    Iterable<String> names;
-    names = engine.board.players.keys;
-    for( nam in names )
+    if( (child = playerImgList.lastChild) != null ) 
+      child.remove();
+    String nam, imagenam;
+    Iterable<String> names = engine.board.players.keys;
+    TableElement table = new TableElement();
+    TableRowElement row = table.addRow();
+    Element cell;
+    playerImgList.append( table );
+    for( nam in names ) {
       addPDOption( playerSelect, nam );
-      //addGPlayerOption( nam );
+      imagenam = engine.board.players[nam].imagename;
+      if( imagenam != null ) {
+        cell = row.addCell();
+        cell.append( new ImageElement(src:'http://${HOSTNAME}/images/${imagenam}.png'));
+      }
+    }
   }
   
   void loadItemOptions() {
-    // load the players and items select list options
+  // load the item select list options from engine.items
+  // and set up the itemList Division
     Node child;
     while( (child = itemSelect.lastChild) != null ) 
       child.remove();
-    String nam;
-    Iterable<String> names;
-    names = engine.board.items.keys;
-    for( nam in names )
+    if( (child = itemImgList.lastChild) != null ) 
+      child.remove();
+    String nam, imagenam;
+    Iterable<String> names = engine.board.items.keys;
+    TableElement table = new TableElement();
+    TableRowElement row = table.addRow();
+    Element cell;
+    itemImgList.append( table );
+    for( nam in names ) {
       addPDOption( itemSelect, nam );   
+      imagenam = engine.board.items[nam].imagename;
+      if( imagenam != null ) {
+        cell = row.addCell();
+        cell.append( new ImageElement(src:'http://${HOSTNAME}/images/${imagenam}.png'));
+      }
+    }
   }
 
   void loadOptions() {

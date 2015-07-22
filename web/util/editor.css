@@ -7,23 +7,33 @@ body {
   line-height: 1.2em;
 }
 
+img {
+  display: block; 
+  }
+
 h1, p {
   color: #333;
 }
 
 div.peditor {
   background-color: yellow;  
-  
 }
 
-img {
-  display: block; 
-  }
+div.fileSection {
+  width:990px;
+  background-color: lightgreen; 
+  color: #202020;
+}
+
+div.newSection {
+  width:990px;
+  background-color: lightblue;  
+  color: #200020;
+}
 
 div#board {
   overflow:auto;
   width:1200px;
-  height:700px
 }
 
 div#mouseover {
@@ -36,6 +46,11 @@ div#messages {
   width:1200px;
   height:18px;
   background-color: #afafF8;
+}
+
+div#select {
+  overflow:auto;
+  width:1200px;
 }
 
 div#toolbox {

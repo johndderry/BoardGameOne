@@ -7,23 +7,24 @@
     <link rel="stylesheet" href="editor.css">
   </head>
   <body>
-    <div id="map"><h4 id="gametitle"></h4>
-      <b>File</b> Name<input type="text" id="mapName" value="piertown">
+    <div id="map" class="fileSection"><h4 id="gametitle"></h4>
+      <b>[Filer]</b> <input type="text" id="mapName" size="20" value="MDG001">
       <button id="loadMap">Load</button><button id="saveMap">Save</button>
       <button id="useLocal">UseLocal</button><button id="useWeb">UseWeb</button>
-      <button id="loadScratch">LoadScratch</button><button id="saveScratch">SaveScratch</button>
-      <button id="clearScratch">ClearScratch</button>
+      <b>[Scratch] </b><input type="text" id="scratchName" size="20" value="Scratch">
+      <button id="loadScratch">Load</button><button id="saveScratch">Save</button><button id="clearScratch">Clear</button>
+      <b>[size]</b> Brd<input type="text" id="boardSize" size="2" value="400">
+      Slc<input type="text" id="selectorSize" size="2" value="200">
     </div>
-    <div><b>New</b>
-      Rows<input type="text" id="rows" size="3">Cols<input type="text" id="cols" size="3">
-      <button id="create">Create</button>
-      <button id="addRow">AddRow</button><button id="addCol">AddCol</button>
-      Size<input type="text" id="imageSize" size="3" value="25"><b>Images</b>      
-      <select id="imageDir"></select>Count<input type="text" id="imageRowCnt" size="4" value="38">
-      <button id="loadImages">Load</button><button id="clearImages">Clear</button>
+    <div class="newSection"><b>[New]</b>
+      Rows= <input type="text" id="rows" size="3"> Cols= <input type="text" id="cols" size="3">
+      <button id="create">Create</button><button id="addRow">&#43Row</button><button id="addCol">&#43Col</button>
+      ImgSize<input type="text" id="imageSize" size="3" value="25">
+      <b>[Selector]</b>      
+      <select id="imageDir"></select> Count<input type="text" id="imageRowCnt" size="4" value="37"><button id="loadImages">Load</button><button id="clearImages">Clear</button>
     </div>
-    <div id="mainArea"></div>
-    <div id="images"></div>
+    <div id="mainPagingArea"></div>
+    <div id="select"></div>
     <div id="toolbox">
       <b>Board:</b> Multi<input type="checkbox" id="multi"> Range<input type="checkbox" id="range">
       <button id="copyBoard">Copy</button><button id="pasteBoard">Paste</button>
@@ -37,13 +38,15 @@
       <button id="updateProp">Update</button>
       <button id="boardProps">BoardProperties</button>
       <button id="dropPlayer">DropPlayer</button><button id="dropItem">DropItem</button><br>
-      <b>Players:</b>
+ 
+      <div id="playerlist"></div><b>Players:</b>
       <button id="copyPlayers">Copy</button><button id="pastePlayers">Paste</button> 
       <select id="playerSelect"></select>
       <button id="playerEdit">Edit</button><button id="playerPlace">Place</button>
       {Name<input type="text" id="playerName">
       <button id="playerCreate">Create</button>} <button id="playerDelete">Delete</button><br>
-      <b>Items:</b>
+ 
+      <div id="itemlist"></div><b>Items:</b>
       <button id="copyItems">Copy</button><button id="pasteItems">Paste</button>
       <select id="itemSelect"></select>
       <button id="itemEdit">Edit</button><button id="itemPlace">Place</button>
@@ -71,5 +74,4 @@
       </div>
     <script type="application/dart" src="editor.dart"></script>
     <script src="../packages/browser/dart.js"></script>
-  </body>
-</html>
+  </b

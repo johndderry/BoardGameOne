@@ -6,12 +6,12 @@ ToolBox       tools;
 
 ButtonElement     loadMap, saveMap, useLocal, useWeb, loadScr, saveScr,
                   addRow, addCol, createNew, swapMain, run, singlestep, step, stop;
-TextInputElement  mapName, rowsNum, colsNum, imageSize;
+TextInputElement  mapName, scratchName, rowsNum, colsNum, imageSize, boardSize;
 
 void main() {
   
-  pager   = new DivPager(querySelector("#mainArea"), '.source', '.console');
-  tools   = new ToolBox(pager.engine, querySelector("#images"), pager.messagesDiv );
+  pager   = new DivPager(querySelector("#mainPagingArea"), '.source', '.console');
+  tools   = new ToolBox(pager.engine, querySelector("#select"), pager.messagesDiv );
   pager.engine.board.boardclass = 'editboard';
   pager.boardloadcallback = tools.loadOptions;
   
@@ -30,9 +30,11 @@ void main() {
   step = querySelector("#step");
   stop = querySelector("#stop");
   mapName = querySelector("#mapName");
+  scratchName = querySelector("#scratchName");
   rowsNum = querySelector("#rows");
   colsNum = querySelector("#cols");
   imageSize = querySelector("#imageSize");
+  boardSize = querySelector("#boardSize");
   
   loadMap.onClick.listen(buttonpress);
   saveMap.onClick.listen(buttonpress);
@@ -56,14 +58,15 @@ void buttonpress(Event e) {
   // just update this everytime
   pager.engine.board.imageSize = int.parse(imageSize.value);
 
-  if( e.currentTarget == loadMap )
+  if( e.currentTarget == loadMap ) {
     pager.engine.board.loadMap(mapName.value);
+  }
   else if( e.currentTarget == saveMap )
     pager.engine.board.saveMap(mapName.value);
   else if( e.currentTarget == loadScr )
-    pager.engine.board.loadScratch(mapName.value);
+    pager.engine.board.loadScratch(scratchName.value);
   else if( e.currentTarget == saveScr )
-    pager.engine.board.saveScratch(mapName.value);
+    pager.engine.board.saveScratch(scratchName.value);
   else if( e.currentTarget == useLocal ) 
     pager.engine.useLocal(querySelector("#map"));
   else if( e.currentTarget == useWeb ) 
