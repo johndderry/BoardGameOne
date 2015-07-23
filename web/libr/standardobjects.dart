@@ -1,3 +1,7 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 part of interpreter;
 
 const String Action_Scripting_help = '''

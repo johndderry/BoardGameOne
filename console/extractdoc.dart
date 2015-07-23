@@ -1,14 +1,16 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 import 'dart:io';
 
-/* Simple Server for game1
- * Browse to it using http://localhost:8080  
- * 
- * Provides CORS headers, so can be accessed from any other page
+/* Generate documentation/BoardGameOne.html
+	extract from sources, and other places
  */
 
-final STANDARDOBJECTS = "lib/standardobjects.dart";  
-final GAMEOBJECTS = "lib/gameengine.dart";
-final DESIGNHELP = "lib/designhelp.dart";
+final STANDARDOBJECTS = "web/libr/standardobjects.dart";  
+final GAMEOBJECTS = "web/libr/gameengine.dart";
+final DESIGNHELP = "web/libr/designhelp.dart";
 
 StringBuffer output = new StringBuffer();
 
@@ -35,7 +37,7 @@ void readFile(String path) {
     }
     else if( path == GAMEOBJECTS ) {
       extractdoc( lines, true );
-      writeFile( 'BoardGameOne.html', output.toString());
+      writeFile( 'documentation/BoardGameOne.html', output.toString());
     }
 
   });

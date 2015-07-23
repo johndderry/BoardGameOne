@@ -1,4 +1,4 @@
 name: BoardGameOne
-description: Generalized board game version 1
+description: Generalized grid-style board game for Dart, version 1
 dependencies:
   browser: any

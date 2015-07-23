@@ -31,7 +31,7 @@ class GameEngine {
   String        narrativeName;  // name for narrative lookup
   CharBuffer    runlibrary;     // library routines to load before running
 
-// division elements passed to us
+  // division elements passed to us
   Element         _boardelement, _mouseover, _messages; 
   GPlayer         _slicePlayer;   // player who has the timer slice
   List<GPlayer>   _activePlayers; // all active players
@@ -662,7 +662,7 @@ are only available while the game is in run mode.
 ''';
 
   static const String player_help = '''
-<p><i>player</i> new_object)name player_identifier</p>
+<p><i>player</i> new_object_name player_identifier</p>
 Player is used to create an object with the modifiable properties of an active player.
 The first argument is the name of the object to create, and the second the identifier of the
 player whose properties you wish to access, or "POV". Reading the value of the Player object

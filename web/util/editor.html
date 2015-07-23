@@ -53,8 +53,8 @@
       {Name<input type="text" id="itemName">
       <button id="itemCreate">Create</button>} <button id="itemDelete">Delete</button>
     </div>
-    <div id="propedit" class="peditor"></div>
-    <div id="runarea">
+    <div id="propedit" class="propEditor"></div>
+    <div id="runarea" class="runArea">
       <button id="swapMain">Swap</button>     
       <button id="run">Run</button><button id="singlestep">SingleStep</button>
       <button id="step">Step</button><button id="stop">Stop</button>
@@ -66,12 +66,14 @@
         <input type="text" size="60" class="source">
         <button id="clear" class="source">Clear</button>
         <div class="source"></div>
-
+    </div>
+    <div id="helparea" class="helpArea">
+      Help
         <select id="helpRoot"></select><select id="helpSelect"></select> 
         <input type="text" size="30" class="helpdiv">
         <button id="clear" class="helpdiv">Clear</button>
         <div class="helpdiv"></div>
-      </div>
+    </div>
     <script type="application/dart" src="editor.dart"></script>
     <script src="../packages/browser/dart.js"></script>
   </b

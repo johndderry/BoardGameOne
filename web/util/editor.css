@@ -15,20 +15,29 @@ h1, p {
   color: #333;
 }
 
-div.peditor {
+div.propEditor {
   background-color: yellow;  
 }
 
 div.fileSection {
-  width:990px;
+  width:1200px;
   background-color: lightgreen; 
   color: #202020;
 }
 
 div.newSection {
-  width:990px;
+  width:1200px;
   background-color: lightblue;  
   color: #200020;
+}
+
+div.runArea {
+  width:1200px;
+  background-color: #ffd700;
+}
+
+div.helpArea {
+  background-color: #ffd7d7;
 }
 
 div#board {
@@ -51,14 +60,6 @@ div#messages {
 div#select {
   overflow:auto;
   width:1200px;
-}
-
-div#toolbox {
-}
-
-div#runarea {
-  width:1200px;
-  background-color: #afF8af;
 }
 
 table.runboard {

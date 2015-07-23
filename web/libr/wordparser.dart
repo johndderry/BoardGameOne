@@ -1,3 +1,7 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 part of makeparser;
 
 const wordinsertcode = '''\n  Map<String,WordNode> wordMap = new Map();

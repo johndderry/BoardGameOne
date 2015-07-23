@@ -1,3 +1,7 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 part of boardgameone;
 
 const   int BELOW = 1, ABOVE = 2, LEFT = 3, RIGHT = 4,

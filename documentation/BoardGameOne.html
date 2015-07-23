@@ -279,6 +279,7 @@ Properties</FONT></FONT></P>
   <LI><P>action<br>script to be executed for each time-slice the
   player is active</P>
   <LI><P>behavior<br>one of the available behavior personalities</P>
+  <LI><P>knowledge<br>one of the available knowledge bases, used for chatting</P>
 </UL>
 <P STYLE="margin-top: 0.17in; page-break-after: avoid"><FONT FACE="Albany, sans-serif"><FONT SIZE=4>Item
 Properties</FONT></FONT></P>
@@ -490,7 +491,7 @@ is finally evaluated false.
 These are script objects which are associated with game board and
 are only available while the game is in run mode.
 <h3>player</h3>
-<p><i>player</i> new_object)name player_identifier</p>
+<p><i>player</i> new_object_name player_identifier</p>
 Player is used to create an object with the modifiable properties of an active player.
 The first argument is the name of the object to create, and the second the identifier of the
 player whose properties you wish to access, or "POV". Reading the value of the Player object
@@ -537,7 +538,7 @@ to limit the sense to. In this way, using distance = 1 will sense for an adjacen
 The results of the proximity check is found in the text output of Proximity, and will be
 one of direction, left/right/up/down, or none.
 <h3>clone</h3>
-<p><i>close</i> player_name location_ident</p>
+<p><i>clone</i> player_name location_ident</p>
 Clone is used to clone a new player from the player definitions and place them
 somewhere on the board. The first argument is the name of the player to clone, and
 the second is the location ident of the location to place the new player.

@@ -1,3 +1,7 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
 part of makeparser;
 
 const ruleinsertcode = '''  List<RuleDef> rules = new List();\n  createrules() {\n    RuleDef def;''';
