@@ -16,33 +16,48 @@ h1, p {
 }
 
 div.propEditor {
-  background-color: yellow;  
+  width:1184px;
+  background-color: #ffd700;
+  margin: 4px;
+  padding: 4px;
 }
 
 div.fileSection {
-  width:1200px;
+  width:1192px;
   background-color: lightgreen; 
   color: #202020;
+  padding: 4px;
 }
 
 div.newSection {
-  width:1200px;
+  width:1192px;
   background-color: lightblue;  
   color: #200020;
+  padding: 4px;
 }
 
 div.runArea {
+  width:1192px;
+  background-color: yellow;
+  padding: 4px;
+}
+
+div.selectArea {
+  overflow:auto;
   width:1200px;
-  background-color: #ffd700;
 }
 
 div.helpArea {
   background-color: #ffd7d7;
+  padding: 4px;
 }
 
 div#board {
   overflow:auto;
   width:1200px;
+  overflow: auto;
+  height: 600px;
+
 }
 
 div#mouseover {
@@ -55,11 +70,6 @@ div#messages {
   width:1200px;
   height:18px;
   background-color: #afafF8;
-}
-
-div#select {
-  overflow:auto;
-  width:1200px;
 }
 
 table.runboard {

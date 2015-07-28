@@ -645,6 +645,8 @@ class GameEngine {
       povPlayer.location = enterbs;
       enterbs.enter(povPlayer);
     }
+    // update the title on game screen
+	pager.updateTitle();
     // unpause the game
     paused = false;
   }
@@ -1449,6 +1451,7 @@ stop, pause, continue, speed, chain, return.
         povPlayer.location.enter(povPlayer);
         // restore the board to view
         board.restore();
+        pager.updateTitle();
         paused = false;   // resume play
         break;
       default: 
@@ -1460,7 +1463,7 @@ stop, pause, continue, speed, chain, return.
   }
   
   /*
-   * Game: this object is used to update the message area with new text
+   * Message: this object is used to update the message area with new text
    */
   static const String message_help = '''
 <p><i>message</i> =/+ text_object</p>
@@ -1585,7 +1588,7 @@ Following the narrative object should be the name of the narrative file.
   }
 
   /*
-   * Narrative: this object is used to display a narrative text
+   * Slice: adjust the time time slice on players
    */
   static const String slice_help = '''
 <p><i>slice</i> function value</p>

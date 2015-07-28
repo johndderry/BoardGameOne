@@ -1,3 +1,12 @@
+/**************************
+  *  BoardGameOne files   *
+  *  (c) John Derry 2015  *
+ **************************/
+//
+//	EDITOR base code
+//	main(): pick up all selector references
+//    then create a DivPager and ToolBox objects - these do the work
+//
 import 'dart:html';
 import '../libr/gameengine.dart';
 
@@ -58,9 +67,8 @@ void buttonpress(Event e) {
   // just update this everytime
   pager.engine.board.imageSize = int.parse(imageSize.value);
 
-  if( e.currentTarget == loadMap ) {
+  if( e.currentTarget == loadMap )
     pager.engine.board.loadMap(mapName.value);
-  }
   else if( e.currentTarget == saveMap )
     pager.engine.board.saveMap(mapName.value);
   else if( e.currentTarget == loadScr )
@@ -101,6 +109,7 @@ void buttonpress(Event e) {
   else if( e.currentTarget == createNew ) {
     tools.reset();  // clear any player / item selection options
     pager.engine.board.create(rowsNum.value, colsNum.value);
+    mapName.value = "";
   }
 }
 

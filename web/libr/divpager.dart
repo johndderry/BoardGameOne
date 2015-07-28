@@ -132,18 +132,28 @@ class DivPager {
     showingConsole = true;
   }
 
-  void _boardloaded() {
-    
-    ObjectEntry titlestring, globalaction;
-    List<Node>  childnodes;
+  void updateTitle() {
     // update the page and heading title
-    titlestring = engine.board.properties['title'];
+    List<Node>  childnodes;
+    ObjectEntry titlestring;
+    Map props;
+    if( (props = engine.board.properties) != null )
+      titlestring = props['title'];
+    if( titlestring == null ) {
+      if( (props = engine.board.altproperties) != null )
+        titlestring = props['title'];
+    }
     if( titlestring != null ) {
       childnodes = title.childNodes;
       childnodes[0].remove();
       title.appendText(titlestring.data.buffer.string); 
       gametitle.text = titlestring.data.buffer.string;
     }
+  }
+
+  void _boardloaded() {
+    // update the title on page
+	updateTitle();
     // set board into run mode
     if( isEditor )
       boardloadcallback();
@@ -152,7 +162,8 @@ class DivPager {
       engine.paused = false;
     }
   } 
-    
+  
+  
   void loadMap( String map ) {
     engine.board.loadMap( map );
   }

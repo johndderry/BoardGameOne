@@ -289,7 +289,7 @@ class GameBoard {
   List<BoardSquare>   _selected = new List<BoardSquare>();
   List<String>        _revIndex;
   
-  Map<String,ObjectEntry> properties;   // global board properties
+  Map<String,ObjectEntry> properties, altproperties;   // global board properties and alt
   Map<String,GPlayer>     players;      // source definition of players on this board
   Map<String,Item>        items;        // source definition of items on this board
   PropEditor              peditor;
@@ -925,10 +925,12 @@ class GameBoard {
     bsMap = new Map();
     // populate the gameboard with squares based on _cellMap details
     _topleft = _populate_board(false);
-    // if present and called for, get the engine properties from the cellmap property entry
     Map prop;
-    if( loadEngineProps && (prop = _cellMap['properties']) != null )
-      properties = genproperties( engine, prop, false );
+    // if present and called for, get the engine properties from the cellmap property entry
+    if( (prop = _cellMap['properties']) != null ) {
+      if( loadEngineProps ) properties = genproperties( engine, prop, false );
+      else                  altproperties = genproperties( engine, prop, false );
+    }
     // look for runlibrary specified
     ObjectEntry runlibrary;
     if( properties != null && (runlibrary = properties['library']) != null )
