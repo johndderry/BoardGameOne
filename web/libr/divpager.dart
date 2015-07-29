@@ -26,7 +26,7 @@ class DivPager {
   var               boardloadcallback;
 
   void enterNarrative(String narrative) {
-        _placeNarrative(narrative, 'You have entered the ${narrative}.<br>');
+        _placeNarrative(narrative, 'Narrative: ${narrative}.<br>');
   }
   
   void _chatlistener() {

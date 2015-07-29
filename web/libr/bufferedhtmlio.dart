@@ -15,7 +15,7 @@ import 'dart:html';
  * Everybody reads this from here
  */
 
-const HOSTNAME = "127.0.0.1:8080";
+const HOSTNAME = "104.154.87.43:80";
 
 /* 
  */

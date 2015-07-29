@@ -10,8 +10,8 @@ import 'dart:io';
  * Provides CORS headers, so can be accessed from any other page
  */
 
-final HOST = "127.0.0.1"; // eg: localhost 
-final PORT = 8080; 
+final HOST = "10.240.96.239"; // eg: localhost 
+final PORT = 80; 
 
 void main() {
   HttpServer.bind(HOST, PORT).then((server) {
@@ -47,8 +47,9 @@ void handleGet(HttpRequest req) {
   
   // remove the leading '/'
   String path = req.uri.path.substring(1);
-  // read the contents and stream out port
+  // read the contents and prepare to stream out port
   var file = new File(path);
+  // determine MIME type
   String contenttype;
   if( path.contains('.html') )
     contenttype = "text/html";
@@ -66,10 +67,17 @@ void handleGet(HttpRequest req) {
     contenttype = "text";
     
   if (file.existsSync()) {
+    // if it exists as named use it
     resp.headers.add(HttpHeaders.CONTENT_TYPE, contenttype);
     file.readAsBytes().asStream().pipe(resp); // automatically close output stream
   }
-  else {
+  else if( true || path.length == 0 ) {
+    file = new File("Introduction.html");
+    contenttype = "text/html";
+    resp.headers.add(HttpHeaders.CONTENT_TYPE, contenttype);
+    file.readAsBytes().asStream().pipe(resp); // automatically close output stream
+    
+  } else {
     var err = "Could not find file: ${req.uri.path}";
     resp.addError(err);
       //stderr.writeln(err);

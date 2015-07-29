@@ -51,7 +51,9 @@ main() {
         imageindexlist.add( item.path.substring(item.path.indexOf('/')+1,item.path.indexOf('.')) );
         print('adding ${item.path}');
       }
-  
+
+    imageindexlist.sort();
+ 
     // save the data to the file
     ioSink = indexfile.openWrite(); 
     ioSink.write(JSON.encode( imageindexlist ));
