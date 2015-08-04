@@ -18,7 +18,6 @@ img {
 div#board {
   overflow:auto;
   width:1200px;
-  height:800px  
 }
 
 div#console {

@@ -1378,7 +1378,8 @@ stop, pause, continue, speed, chain, return.
       return 0;
     }    
     if( tok != TokenLexer.NAME ) {
-      source.webcon.writeln('ERROR: expecting stop, pause, continue or speed. Found ${lexer.lastscanchar}');
+      source.webcon.writeln(
+         'ERROR: expecting stop, pause, continue or speed; chain, return or url.\nFound ${lexer.lastscanchar}');
       lexer.backup();
       return CharBuffer.ERROR;      
     }
@@ -1454,8 +1455,18 @@ stop, pause, continue, speed, chain, return.
         pager.updateTitle();
         paused = false;   // resume play
         break;
+      case 'url':
+        tok = lexer.nexttoken();
+        if( tok != TokenLexer.STRING) { 
+          source.webcon.writeln('ERROR: expecting "url", found ${lexer.lastscanchar}');
+          lexer.backup();
+          return CharBuffer.ERROR; 
+        } 
+        window.open(lexer.string.string,'url');
+        break;
       default: 
-        source.webcon.writeln('WARNING: expecting stop, pause, continue or speed. Found ${lexer.name}');
+        source.webcon.writeln(
+         'Expecting stop, pause, continue or speed; chain, return or url.\nFound ${lexer.lastscanchar}');
         break;
     }
     
